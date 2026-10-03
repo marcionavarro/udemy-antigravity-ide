@@ -2,9 +2,11 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="description" content="App de Gestão Financeira Pessoal - Registre gastos mensais, compare com sua renda e analise gráficos dinâmicos. Desenvolvido para mobile e web.">
   <meta name="theme-color" content="#0D0E12">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Gestão Financeira Mensal | Tectreinamentos</title>
   
   <!-- Fontes Google -->
@@ -12,8 +14,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <!-- Chart.js para Gráficos Interativos -->
+  <!-- Chart.js e Plugin DataLabels para porcentagens nativas no gráfico -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 
   <!-- Estilos Personalizados -->
   <link rel="stylesheet" href="style.css">
@@ -37,12 +40,11 @@
       </div>
 
       <div class="header-actions">
-        <button id="btnNewMonth" class="btn-primary-sm" title="Criar Novo Mês">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          <span>Novo Mês</span>
+        <!-- Perfil do Usuário com Edição de Nome -->
+        <button id="btnOpenEditName" class="user-greeting-btn" title="Editar seu nome">
+          <span class="user-icon">👤</span>
+          <span class="user-name-label" id="userNameLabel">Seu Nome</span>
+          <span class="user-edit-icon">✏️</span>
         </button>
       </div>
     </header>
@@ -50,11 +52,57 @@
     <!-- Month Navigation / Selector Bar -->
     <section class="month-selector-section">
       <div class="section-label-row">
-        <span class="section-label">MÊS DE ANÁLISE:</span>
-        <button id="btnDeleteCurrentMonth" class="btn-text-danger" title="Excluir este mês">Excluir mês</button>
+        <div class="label-left-group">
+          <span class="section-label">MÊS SELECIONADO:</span>
+          <span class="active-month-badge" id="currentMonthNameDisplay">Janeiro</span>
+        </div>
+        <div class="label-right-actions">
+          <button id="btnNewMonth" class="btn-primary-mini" title="Criar Novo Mês">
+            <span>+ Novo Mês</span>
+          </button>
+          <button id="btnDeleteCurrentMonth" class="btn-text-danger" title="Excluir este mês">Excluir</button>
+        </div>
       </div>
       <div class="month-pills-wrapper" id="monthPillsContainer">
         <!-- Rendered dynamically by JS -->
+      </div>
+    </section>
+
+    <!-- Card de Acumulado Anual (Resumo Geral) -->
+    <section class="annual-summary-section">
+      <div class="annual-card">
+        <div class="annual-card-header">
+          <div class="annual-header-left">
+            <span class="annual-tag">ACUMULADO DO ANO</span>
+            <span class="annual-months-count" id="annualMonthsCount">2 meses registrados</span>
+          </div>
+          <button id="btnToggleAnnualDetails" class="btn-text-link">Ver Detalhes</button>
+        </div>
+        <div class="annual-metrics-row">
+          <div class="annual-metric">
+            <span class="metric-title">Renda Total</span>
+            <span class="metric-val text-green" id="annualTotalIncome">R$ 0,00</span>
+          </div>
+          <div class="annual-metric">
+            <span class="metric-title">Gasto Total</span>
+            <span class="metric-val text-orange" id="annualTotalExpense">R$ 0,00</span>
+          </div>
+          <div class="annual-metric">
+            <span class="metric-title">Economia Total</span>
+            <span class="metric-val" id="annualTotalBalance">R$ 0,00</span>
+          </div>
+        </div>
+
+        <!-- Barra de Progresso Anual -->
+        <div class="annual-progress-container" id="annualDetailsCollapsible">
+          <div class="annual-progress-labels">
+            <span id="annualExpensePercentLabel">Comprometimento da Renda: 0%</span>
+            <span id="annualSavingsRateLabel">Taxa de Poupança: 0%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="annualProgressBarFill" style="width: 0%;"></div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -73,18 +121,18 @@
           <line x1="12" y1="20" x2="12" y2="4"></line>
           <line x1="6" y1="20" x2="6" y2="14"></line>
         </svg>
-        <span>Gráficos & Análise</span>
+        <span>Gráficos & Pizza</span>
       </button>
       <button class="tab-btn" data-tab="tab-historico">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"></circle>
           <polyline points="12 6 12 12 16 14"></polyline>
         </svg>
-        <span>Comparativo Geral</span>
+        <span>Histórico Anual</span>
       </button>
     </nav>
 
-    <!-- KPI Summary Cards (Real-time Totals) -->
+    <!-- KPI Summary Cards (Real-time Totals for Selected Month) -->
     <section class="summary-cards">
       <div class="card-kpi income-card">
         <div class="kpi-icon-wrap">
@@ -93,7 +141,7 @@
           </svg>
         </div>
         <div class="kpi-info">
-          <span class="kpi-label">Salário / Renda</span>
+          <span class="kpi-label">Salário Mensal</span>
           <h2 class="kpi-value" id="kpiIncome">R$ 0,00</h2>
         </div>
       </div>
@@ -118,7 +166,7 @@
         </div>
         <div class="kpi-info">
           <div class="kpi-header-row">
-            <span class="kpi-label">Saldo Restante</span>
+            <span class="kpi-label">Saldo do Mês</span>
             <span class="kpi-badge" id="kpiPercentBadge">0%</span>
           </div>
           <h2 class="kpi-value" id="kpiBalance">R$ 0,00</h2>
@@ -139,7 +187,7 @@
           <span class="badge-hint">Base de cálculo</span>
         </div>
         <div class="salary-input-container">
-          <label for="monthlySalaryInput" class="input-label">Informe quanto recebeu no mês (<span id="currentMonthNameDisplay">Janeiro</span>):</label>
+          <label for="monthlySalaryInput" class="input-label">Informe o salário recebido neste mês:</label>
           <div class="currency-input-wrapper">
             <span class="currency-symbol">R$</span>
             <input type="text" id="monthlySalaryInput" inputmode="decimal" placeholder="0,00" class="currency-field" autocomplete="off">
@@ -152,7 +200,7 @@
         <div class="content-box-header">
           <div class="box-title-group">
             <span class="bullet-dot orange"></span>
-            <h3>Contas & Gastos Mensais</h3>
+            <h3>Contas & Gastos do Mês</h3>
           </div>
           <button id="btnOpenAddCategory" class="btn-outline-orange" title="Adicionar nova conta mensal">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -164,7 +212,7 @@
         </div>
         
         <p class="section-description">
-          Edite os valores abaixo. Novas contas adicionadas serão salvas automaticamente como padrão para os próximos meses!
+          Digite os valores das contas. Novas contas que você cadastrar serão salvas como padrão para todos os próximos meses!
         </p>
 
         <!-- Lista dinâmica de despesas -->
@@ -188,6 +236,29 @@
     <!-- TAB 2: GRÁFICOS & ANÁLISE DETALHADA -->
     <section class="tab-content" id="tab-graficos">
       
+      <!-- Gráfico Distribuição de Gastos com Percentuais Nativos (Pizza / Rosca) -->
+      <div class="content-box">
+        <div class="content-box-header">
+          <div class="box-title-group">
+            <span class="bullet-dot orange"></span>
+            <h3>Distribuição de Gastos (% na Pizza)</h3>
+          </div>
+          <span class="badge-hint">Percentuais Nativos</span>
+        </div>
+        
+        <p class="section-description">
+          Os percentuais são exibidos nativamente sobre cada fatia e na legenda interativa:
+        </p>
+
+        <div class="chart-container-wrapper pie-chart-wrapper">
+          <canvas id="categoryDistributionChart"></canvas>
+        </div>
+
+        <div class="top-categories-ranking" id="topCategoriesRanking">
+          <!-- Top ranking de maiores gastos -->
+        </div>
+      </div>
+
       <!-- Gráfico Comparativo Principal -->
       <div class="content-box">
         <div class="content-box-header">
@@ -207,25 +278,6 @@
         </div>
       </div>
 
-      <!-- Gráfico Distribuição de Gastos -->
-      <div class="content-box">
-        <div class="content-box-header">
-          <div class="box-title-group">
-            <span class="bullet-dot orange"></span>
-            <h3>Onde você mais gasta?</h3>
-          </div>
-          <span class="badge-hint">Por Categoria</span>
-        </div>
-        
-        <div class="chart-container-wrapper doughnut-chart-wrapper">
-          <canvas id="categoryDistributionChart"></canvas>
-        </div>
-
-        <div class="top-categories-ranking" id="topCategoriesRanking">
-          <!-- Top ranking de maiores gastos -->
-        </div>
-      </div>
-
     </section>
 
     <!-- TAB 3: COMPARATIVO HISTÓRICO GERAL -->
@@ -235,11 +287,11 @@
         <div class="content-box-header">
           <div class="box-title-group">
             <span class="bullet-dot orange"></span>
-            <h3>Evolução Mensal (Histórico)</h3>
+            <h3>Evolução Mensal & Acumulado</h3>
           </div>
         </div>
         <p class="section-description">
-          Acompanhe como sua renda, seus gastos e suas economias evoluíram ao longo dos meses cadastrados.
+          Acompanhe como sua renda, seus gastos e suas economias evoluíram ao longo de todo o ano.
         </p>
 
         <div class="chart-container-wrapper history-chart-wrapper">
@@ -260,6 +312,9 @@
             <tbody id="historyTableBody">
               <!-- Preenchido via JS -->
             </tbody>
+            <tfoot id="historyTableFoot">
+              <!-- Linha de Acumulado Total do Ano -->
+            </tfoot>
           </table>
         </div>
       </div>
@@ -273,7 +328,7 @@
           </div>
         </div>
         <p class="section-description">
-          Seus dados são salvos com segurança no armazenamento local deste navegador.
+          Seus dados são salvos com total segurança na memória deste dispositivo.
         </p>
         <div class="data-actions-row">
           <button id="btnExportData" class="btn-secondary-sm">
@@ -302,6 +357,29 @@
       </div>
 
     </section>
+
+    <!-- MODAL: NOME DA PESSOA -->
+    <div class="modal-overlay" id="modalEditName">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3>Identificação do Usuário</h3>
+          <button class="modal-close" data-close-modal="modalEditName">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-desc">
+            Como você gostaria de ser chamado no aplicativo?
+          </p>
+          <div class="form-group">
+            <label for="userNameInput" class="form-label">Seu Nome ou Apelido:</label>
+            <input type="text" id="userNameInput" class="form-input" placeholder="Ex: Carlos, Ana Silva..." maxlength="30" autofocus>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" data-close-modal="modalEditName">Cancelar</button>
+          <button id="btnSaveUserName" class="btn-primary">Salvar Nome</button>
+        </div>
+      </div>
+    </div>
 
     <!-- MODAL: NOVO MÊS -->
     <div class="modal-overlay" id="modalNewMonth">

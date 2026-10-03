@@ -11,8 +11,9 @@
   const STORAGE_KEY_MONTHS = 'financaspro_months_data';
   const STORAGE_KEY_CATEGORIES = 'financaspro_custom_categories';
   const STORAGE_KEY_CURRENT_MONTH_ID = 'financaspro_current_month_id';
+  const STORAGE_KEY_USER_NAME = 'financaspro_user_name';
 
-  // Categorias padrão iniciais solicitadas pelo usuário
+  // Categorias padrão solicitadas pelo usuário
   const DEFAULT_CATEGORIES = [
     { id: 'cat_casa', name: 'Casa', icon: '🏠', isDefault: true },
     { id: 'cat_cartao', name: 'Cartão', icon: '💳', isDefault: true },
@@ -27,25 +28,55 @@
   let masterCategories = [];
   let monthsData = [];
   let currentMonthId = null;
+  let userName = 'Seu Nome';
 
   // Instâncias dos Gráficos Chart.js
   let chartIncomeExpense = null;
   let chartCategoryDistribution = null;
   let chartMonthlyHistory = null;
 
+  // Registrar Plugin DataLabels se estiver disponível
+  if (typeof ChartDataLabels !== 'undefined') {
+    Chart.register(ChartDataLabels);
+  }
+
   /* ==========================================================================
      INICIALIZAÇÃO & PERSISTÊNCIA
      ========================================================================== */
 
   function initApp() {
+    loadUserName();
     loadCategories();
     loadMonthsData();
     setupEventListeners();
     setupTabs();
+    setupMobileAntiShiftFix();
     renderApp();
   }
 
-  // Carrega lista mestre de categorias (Padrões + Customizadas pelo usuário)
+  // Carrega e salva nome do usuário
+  function loadUserName() {
+    const savedName = localStorage.getItem(STORAGE_KEY_USER_NAME);
+    if (savedName && savedName.trim() !== '') {
+      userName = savedName.trim();
+    } else {
+      userName = 'Seu Nome';
+    }
+    updateUserNameDisplay();
+  }
+
+  function saveUserName(name) {
+    userName = name && name.trim() !== '' ? name.trim() : 'Seu Nome';
+    localStorage.setItem(STORAGE_KEY_USER_NAME, userName);
+    updateUserNameDisplay();
+  }
+
+  function updateUserNameDisplay() {
+    const label = document.getElementById('userNameLabel');
+    if (label) label.textContent = userName;
+  }
+
+  // Carrega lista mestre de categorias
   function loadCategories() {
     const saved = localStorage.getItem(STORAGE_KEY_CATEGORIES);
     if (saved) {
@@ -75,7 +106,7 @@
       }
     }
 
-    // Se estiver vazio, cria dados iniciais de demonstração (Janeiro com valores de exemplo)
+    // Se estiver vazio, cria dados iniciais com Janeiro e Março (como sugerido pelo usuário)
     if (!monthsData || monthsData.length === 0) {
       const initialMonth = createMonthObject('Janeiro', 4500.00, {
         'cat_casa': 1200.00,
@@ -119,7 +150,6 @@
     const id = 'month_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
     const expenses = {};
 
-    // Popula todas as categorias ativas (garante que novas contas passem a ser padrão)
     masterCategories.forEach(cat => {
       expenses[cat.id] = initialExpenses[cat.id] !== undefined ? initialExpenses[cat.id] : 0;
     });
@@ -161,14 +191,13 @@
   function parseBRLString(str) {
     if (typeof str === 'number') return str;
     if (!str) return 0;
-    // Remove tudo que não for dígito
     const cleanStr = str.toString().replace(/\D/g, '');
     if (!cleanStr) return 0;
     return parseFloat(cleanStr) / 100;
   }
 
   function maskCurrencyInput(inputElement, onValueChange) {
-    inputElement.addEventListener('input', function (e) {
+    inputElement.addEventListener('input', function () {
       let digits = this.value.replace(/\D/g, '');
       if (digits === '') {
         this.value = '';
@@ -185,19 +214,45 @@
   }
 
   /* ==========================================================================
+     CORREÇÃO RIGOROSA MOBILE ANTI-DESLOCAMENTO (ANDROID & IOS)
+     ========================================================================== */
+
+  function setupMobileAntiShiftFix() {
+    // Quando qualquer input perde o foco no mobile, reposiciona a tela em X=0
+    document.addEventListener('focusout', function (e) {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
+        window.scrollTo({ left: 0, top: window.scrollY });
+        if (document.documentElement.scrollLeft > 0) document.documentElement.scrollLeft = 0;
+        if (document.body.scrollLeft > 0) document.body.scrollLeft = 0;
+      }
+    });
+
+    // Previne rolagem horizontal provocada pelo teclado virtual ao focar
+    document.addEventListener('focusin', function (e) {
+      if (e.target && e.target.tagName === 'INPUT') {
+        setTimeout(() => {
+          if (window.scrollX > 0) {
+            window.scrollTo({ left: 0, top: window.scrollY });
+          }
+        }, 100);
+      }
+    });
+  }
+
+  /* ==========================================================================
      RENDERIZAÇÃO PRINCIPAL
      ========================================================================== */
 
   function renderApp() {
     ensureAllMonthsHaveAllCategories();
     renderMonthPills();
+    renderAnnualSummary();
     renderKPIs();
     renderSalaryInput();
     renderExpenseRows();
     updateCharts();
   }
 
-  // Garante que todos os meses cadastrados contenham todas as categorias mestre
   function ensureAllMonthsHaveAllCategories() {
     monthsData.forEach(month => {
       if (!month.expenses) month.expenses = {};
@@ -226,14 +281,12 @@
       container.appendChild(pill);
     });
 
-    // Botão inline para adicionar mês rápido
     const addBtn = document.createElement('button');
     addBtn.className = 'btn-add-month-pill';
     addBtn.innerHTML = `<span>+ Mês</span>`;
     addBtn.addEventListener('click', openNewMonthModal);
     container.appendChild(addBtn);
 
-    // Atualiza nome na visualização
     const curr = getCurrentMonth();
     const monthDisplay = document.getElementById('currentMonthNameDisplay');
     if (monthDisplay && curr) monthDisplay.textContent = curr.name;
@@ -242,7 +295,46 @@
     if (chartMonthLabel && curr) chartMonthLabel.textContent = curr.name;
   }
 
-  // KPIs de Topo: Salário, Total Gasto, Saldo Restante
+  // ==========================================================================
+  // RENDER: ACUMULADO DO ANO
+  // ==========================================================================
+  function renderAnnualSummary() {
+    let totalAnnualIncome = 0;
+    let totalAnnualExpense = 0;
+
+    monthsData.forEach(m => {
+      totalAnnualIncome += (Number(m.salary) || 0);
+      if (m.expenses) {
+        Object.values(m.expenses).forEach(v => totalAnnualExpense += (Number(v) || 0));
+      }
+    });
+
+    const totalAnnualBalance = totalAnnualIncome - totalAnnualExpense;
+    const monthsCount = monthsData.length;
+
+    document.getElementById('annualMonthsCount').textContent = `${monthsCount} ${monthsCount === 1 ? 'mês registrado' : 'meses registrados'}`;
+    document.getElementById('annualTotalIncome').textContent = formatBRL(totalAnnualIncome);
+    document.getElementById('annualTotalExpense').textContent = formatBRL(totalAnnualExpense);
+
+    const balanceEl = document.getElementById('annualTotalBalance');
+    balanceEl.textContent = formatBRL(totalAnnualBalance);
+    balanceEl.className = `metric-val ${totalAnnualBalance >= 0 ? 'text-green' : 'text-orange'}`;
+
+    // Percentuais e Barra de Progresso
+    const spentPercent = totalAnnualIncome > 0 ? Math.min(100, Math.round((totalAnnualExpense / totalAnnualIncome) * 100)) : 0;
+    const savingsPercent = totalAnnualIncome > 0 ? Math.max(0, Math.round((totalAnnualBalance / totalAnnualIncome) * 100)) : 0;
+
+    const expenseLabel = document.getElementById('annualExpensePercentLabel');
+    if (expenseLabel) expenseLabel.textContent = `Comprometimento da Renda: ${spentPercent}%`;
+
+    const savingsLabel = document.getElementById('annualSavingsRateLabel');
+    if (savingsLabel) savingsLabel.textContent = `Taxa de Economia: ${savingsPercent}%`;
+
+    const barFill = document.getElementById('annualProgressBarFill');
+    if (barFill) barFill.style.width = `${spentPercent}%`;
+  }
+
+  // KPIs de Topo: Mês Selecionado
   function renderKPIs() {
     const curr = getCurrentMonth();
     if (!curr) return;
@@ -277,7 +369,6 @@
     }
   }
 
-  // Render do campo de Salário
   function renderSalaryInput() {
     const curr = getCurrentMonth();
     const input = document.getElementById('monthlySalaryInput');
@@ -286,7 +377,6 @@
     input.value = curr.salary > 0 ? formatNumberString(curr.salary) : '';
   }
 
-  // Render das Linhas de Gastos
   function renderExpenseRows() {
     const curr = getCurrentMonth();
     const list = document.getElementById('expenseItemsList');
@@ -330,16 +420,15 @@
 
       list.appendChild(row);
 
-      // Evento de digitação com máscara
       const moneyInput = row.querySelector('.input-money-item');
       maskCurrencyInput(moneyInput, (numVal) => {
         curr.expenses[cat.id] = numVal;
         saveMonthsData();
         renderKPIs();
+        renderAnnualSummary();
         updateCharts();
       });
 
-      // Evento de remoção de categoria personalizada
       const removeBtn = row.querySelector('[data-remove-cat]');
       if (removeBtn) {
         removeBtn.addEventListener('click', () => {
@@ -367,17 +456,14 @@
       isDefault: false
     };
 
-    // Adiciona à lista mestre permanente (passa a ser padrão para todos os meses presentes e futuros)
     masterCategories.push(newCategory);
     saveCategories();
 
-    // Adiciona ao mês atual com o valor inicial informado
     const curr = getCurrentMonth();
     if (curr) {
       curr.expenses[catId] = initialValue || 0;
     }
 
-    // Adiciona aos outros meses com valor 0
     monthsData.forEach(m => {
       if (m.id !== currentMonthId) {
         m.expenses[catId] = 0;
@@ -391,7 +477,7 @@
   }
 
   function confirmRemoveCategory(catId, catName) {
-    if (confirm(`Deseja remover permanentemente a conta "${catName}" de todos os meses futuros e atuais?`)) {
+    if (confirm(`Deseja remover a conta "${catName}" de todos os meses atuais e futuros?`)) {
       masterCategories = masterCategories.filter(c => c.id !== catId);
       saveCategories();
 
@@ -436,7 +522,7 @@
     }
 
     const curr = getCurrentMonth();
-    if (confirm(`Tem certeza que deseja excluir o mês "${curr.name}" e todos os seus lançamentos?`)) {
+    if (confirm(`Tem certeza que deseja excluir o mês "${curr.name}" e seus lançamentos?`)) {
       monthsData = monthsData.filter(m => m.id !== curr.id);
       currentMonthId = monthsData[0].id;
       localStorage.setItem(STORAGE_KEY_CURRENT_MONTH_ID, currentMonthId);
@@ -447,121 +533,16 @@
   }
 
   /* ==========================================================================
-     GRÁFICOS & ANÁLISE INTERATIVA (CHART.JS)
+     GRÁFICOS & ANÁLISE INTERATIVA COM PERCENTUAIS NATIVOS
      ========================================================================== */
 
   function updateCharts() {
-    renderIncomeExpenseChart();
     renderCategoryDistributionChart();
+    renderIncomeExpenseChart();
     renderMonthlyHistoryChart();
   }
 
-  // Gráfico 1: Comparativo Renda vs Gastos do Mês
-  function renderIncomeExpenseChart() {
-    const ctx = document.getElementById('incomeExpenseChart');
-    if (!ctx) return;
-
-    const curr = getCurrentMonth();
-    const salary = curr ? (Number(curr.salary) || 0) : 0;
-    let totalExpense = 0;
-
-    if (curr) {
-      Object.values(curr.expenses).forEach(v => totalExpense += (Number(v) || 0));
-    }
-
-    const balance = salary - totalExpense;
-
-    if (chartIncomeExpense) {
-      chartIncomeExpense.destroy();
-    }
-
-    chartIncomeExpense = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: ['Renda Recebida', 'Total de Gastos', 'Saldo Final'],
-        datasets: [{
-          data: [salary, totalExpense, balance],
-          backgroundColor: [
-            '#10B981', // Verde Renda
-            '#FF6B00', // Laranja Gastos
-            balance >= 0 ? '#3B82F6' : '#EF4444' // Azul se positivo, Vermelho se negativo
-          ],
-          borderRadius: 8,
-          borderWidth: 0,
-          barPercentage: 0.55
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: function (context) {
-                return ` ${formatBRL(context.raw)}`;
-              }
-            }
-          }
-        },
-        scales: {
-          x: {
-            grid: { display: false },
-            ticks: { color: '#9CA3AF', font: { family: 'Plus Jakarta Sans', weight: '600' } }
-          },
-          y: {
-            grid: { color: 'rgba(255, 255, 255, 0.06)' },
-            ticks: {
-              color: '#6B7280',
-              font: { family: 'Plus Jakarta Sans' },
-              callback: function (value) {
-                return 'R$ ' + value.toLocaleString('pt-BR');
-              }
-            }
-          }
-        }
-      }
-    });
-
-    // Insights rápidos em texto
-    const insightsContainer = document.getElementById('chartInsights');
-    if (insightsContainer) {
-      let insightHtml = '';
-      if (salary === 0 && totalExpense === 0) {
-        insightHtml = `
-          <div class="insight-card">
-            <span class="insight-icon">💡</span>
-            <div class="insight-text">Preencha seu <strong>salário</strong> e os <strong>gastos</strong> deste mês para gerar a análise comparativa.</div>
-          </div>
-        `;
-      } else if (balance > 0) {
-        const percentSaved = Math.round((balance / salary) * 100);
-        insightHtml = `
-          <div class="insight-card">
-            <span class="insight-icon">🎯</span>
-            <div class="insight-text">Excelente! Você economizou <strong>${formatBRL(balance)}</strong> neste mês (aproximadamente <strong>${percentSaved}%</strong> da sua renda).</div>
-          </div>
-        `;
-      } else if (balance === 0 && salary > 0) {
-        insightHtml = `
-          <div class="insight-card">
-            <span class="insight-icon">⚖️</span>
-            <div class="insight-text">Seus gastos empataram exatamente com o seu salário. Atenção para imprevistos!</div>
-          </div>
-        `;
-      } else {
-        insightHtml = `
-          <div class="insight-card">
-            <span class="insight-icon">⚠️</span>
-            <div class="insight-text">Alerta: Você gastou <strong>${formatBRL(Math.abs(balance))}</strong> a mais do que recebeu. Revise contas prioritárias.</div>
-          </div>
-        `;
-      }
-      insightsContainer.innerHTML = insightHtml;
-    }
-  }
-
-  // Gráfico 2: Distribuição dos Gastos por Categoria (Doughnut)
+  // Gráfico 1: Distribuição dos Gastos por Categoria (PIZZA COM PERCENTUAIS NATIVOS)
   function renderCategoryDistributionChart() {
     const ctx = document.getElementById('categoryDistributionChart');
     if (!ctx) return;
@@ -592,10 +573,13 @@
       chartCategoryDistribution.destroy();
     }
 
-    if (data.length === 0) {
+    const isDataEmpty = data.length === 0;
+    if (isDataEmpty) {
       labels.push('Sem gastos informados');
       data.push(1);
     }
+
+    const totalSpent = isDataEmpty ? 1 : data.reduce((a, b) => a + b, 0);
 
     chartCategoryDistribution = new Chart(ctx, {
       type: 'doughnut',
@@ -603,38 +587,78 @@
         labels: labels,
         datasets: [{
           data: data,
-          backgroundColor: data.length === 1 && labels[0].includes('Sem gastos') ? ['#242936'] : colors.slice(0, data.length),
+          backgroundColor: isDataEmpty ? ['#242936'] : colors.slice(0, data.length),
           borderWidth: 2,
-          borderColor: '#161921'
+          borderColor: '#161921',
+          hoverOffset: 6
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
+          // EXIBIÇÃO DE PERCENTUAIS NATIVOS SOBRE AS FATIAS DA PIZZA
+          datalabels: {
+            display: function (context) {
+              if (isDataEmpty) return false;
+              const val = context.dataset.data[context.dataIndex];
+              const pct = (val / totalSpent) * 100;
+              return pct >= 4; // Exibe se for 4% ou mais para legibilidade
+            },
+            formatter: function (value) {
+              const pct = Math.round((value / totalSpent) * 100);
+              return `${pct}%`;
+            },
+            color: '#FFFFFF',
+            font: {
+              family: 'Plus Jakarta Sans',
+              weight: 'bold',
+              size: 11
+            },
+            textShadowColor: 'rgba(0, 0, 0, 0.7)',
+            textShadowBlur: 4
+          },
           legend: {
             position: 'bottom',
             labels: {
-              color: '#9CA3AF',
-              font: { family: 'Plus Jakarta Sans', size: 11 },
+              color: '#F3F4F6',
+              font: { family: 'Plus Jakarta Sans', size: 11, weight: '600' },
               boxWidth: 12,
-              padding: 10
+              padding: 10,
+              generateLabels: function (chart) {
+                const chartData = chart.data;
+                if (chartData.labels.length && chartData.datasets.length) {
+                  return chartData.labels.map((label, i) => {
+                    const val = chartData.datasets[0].data[i];
+                    const pct = isDataEmpty ? '' : ` (${Math.round((val / totalSpent) * 100)}%)`;
+                    return {
+                      text: `${label}${pct}`,
+                      fillStyle: chartData.datasets[0].backgroundColor[i],
+                      hidden: isNaN(chartData.datasets[0].data[i]) || chart.getDatasetMeta(0).data[i]?.hidden,
+                      index: i
+                    };
+                  });
+                }
+                return [];
+              }
             }
           },
           tooltip: {
             callbacks: {
               label: function (context) {
-                if (context.label.includes('Sem gastos')) return ' Nenhum valor inserido';
-                return ` ${formatBRL(context.raw)}`;
+                if (isDataEmpty) return ' Nenhum valor inserido';
+                const val = context.raw;
+                const pct = ((val / totalSpent) * 100).toFixed(1);
+                return ` ${formatBRL(val)} (${pct}%)`;
               }
             }
           }
         },
-        cutout: '65%'
+        cutout: '62%'
       }
     });
 
-    // Top Ranking de Categorias
+    // Top Ranking de Categorias com Barra Proporcional
     const rankingContainer = document.getElementById('topCategoriesRanking');
     if (rankingContainer) {
       ranking.sort((a, b) => b.val - a.val);
@@ -647,8 +671,8 @@
           return `
             <div class="ranking-item">
               <div class="ranking-name">
-                <span style="font-size:1.1rem;">${item.icon || '📄'}</span>
-                <span>${escapeHTML(item.name)} <small style="color:#6B7280;">(${pct}%)</small></span>
+                <span style="font-size:1.15rem;">${item.icon || '📄'}</span>
+                <span>${escapeHTML(item.name)} <strong style="color:var(--orange-primary); font-size:0.75rem;">${pct}%</strong></span>
               </div>
               <span class="ranking-val">${formatBRL(item.val)}</span>
             </div>
@@ -656,6 +680,111 @@
         }).join('');
         rankingContainer.innerHTML = itemsHtml;
       }
+    }
+  }
+
+  // Gráfico 2: Comparativo Renda vs Gastos do Mês
+  function renderIncomeExpenseChart() {
+    const ctx = document.getElementById('incomeExpenseChart');
+    if (!ctx) return;
+
+    const curr = getCurrentMonth();
+    const salary = curr ? (Number(curr.salary) || 0) : 0;
+    let totalExpense = 0;
+
+    if (curr) {
+      Object.values(curr.expenses).forEach(v => totalExpense += (Number(v) || 0));
+    }
+
+    const balance = salary - totalExpense;
+
+    if (chartIncomeExpense) {
+      chartIncomeExpense.destroy();
+    }
+
+    chartIncomeExpense = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Renda', 'Gastos', 'Saldo'],
+        datasets: [{
+          data: [salary, totalExpense, balance],
+          backgroundColor: [
+            '#10B981',
+            '#FF6B00',
+            balance >= 0 ? '#3B82F6' : '#EF4444'
+          ],
+          borderRadius: 8,
+          borderWidth: 0,
+          barPercentage: 0.55
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          datalabels: { display: false },
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (context) {
+                return ` ${formatBRL(context.raw)}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { color: '#9CA3AF', font: { family: 'Plus Jakarta Sans', weight: '600' } }
+          },
+          y: {
+            grid: { color: 'rgba(255, 255, 255, 0.06)' },
+            ticks: {
+              color: '#6B7280',
+              font: { family: 'Plus Jakarta Sans' },
+              callback: function (value) {
+                return 'R$ ' + value.toLocaleString('pt-BR');
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const insightsContainer = document.getElementById('chartInsights');
+    if (insightsContainer) {
+      let insightHtml = '';
+      if (salary === 0 && totalExpense === 0) {
+        insightHtml = `
+          <div class="insight-card">
+            <span class="insight-icon">💡</span>
+            <div class="insight-text">Preencha seu <strong>salário</strong> e os <strong>gastos</strong> deste mês para gerar a análise comparativa.</div>
+          </div>
+        `;
+      } else if (balance > 0) {
+        const percentSaved = Math.round((balance / salary) * 100);
+        insightHtml = `
+          <div class="insight-card">
+            <span class="insight-icon">🎯</span>
+            <div class="insight-text">Excelente! Você economizou <strong>${formatBRL(balance)}</strong> neste mês (aproximadamente <strong>${percentSaved}%</strong> da sua renda).</div>
+          </div>
+        `;
+      } else if (balance === 0 && salary > 0) {
+        insightHtml = `
+          <div class="insight-card">
+            <span class="insight-icon">⚖️</span>
+            <div class="insight-text">Seus gastos empataram exatamente com o seu salário.</div>
+          </div>
+        `;
+      } else {
+        insightHtml = `
+          <div class="insight-card">
+            <span class="insight-icon">⚠️</span>
+            <div class="insight-text">Alerta: Você gastou <strong>${formatBRL(Math.abs(balance))}</strong> a mais do que recebeu.</div>
+          </div>
+        `;
+      }
+      insightsContainer.innerHTML = insightHtml;
     }
   }
 
@@ -701,6 +830,7 @@
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
+          datalabels: { display: false },
           legend: {
             position: 'top',
             labels: { color: '#F3F4F6', font: { family: 'Plus Jakarta Sans', weight: '600' } }
@@ -731,16 +861,24 @@
       }
     });
 
-    // Renderiza a Tabela de Histórico
+    // Renderiza a Tabela de Histórico com linha de Total Acumulado
     const tableBody = document.getElementById('historyTableBody');
+    const tableFoot = document.getElementById('historyTableFoot');
+
     if (tableBody) {
       tableBody.innerHTML = '';
+      let sumSal = 0;
+      let sumExp = 0;
+
       monthsData.forEach(m => {
         const sal = Number(m.salary) || 0;
         let exp = 0;
         Object.values(m.expenses).forEach(v => exp += (Number(v) || 0));
         const bal = sal - exp;
         const isPos = bal >= 0;
+
+        sumSal += sal;
+        sumExp += exp;
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -756,6 +894,26 @@
         `;
         tableBody.appendChild(tr);
       });
+
+      // Linha de Rodapé com Total Acumulado do Ano
+      if (tableFoot) {
+        const totalBal = sumSal - sumExp;
+        const totalIsPos = totalBal >= 0;
+        const balColor = totalIsPos ? 'var(--status-positive)' : 'var(--status-negative)';
+        tableFoot.innerHTML = `
+          <tr>
+            <td><strong>TOTAL DO ANO</strong></td>
+            <td><strong>${formatBRL(sumSal)}</strong></td>
+            <td><strong style="color:var(--orange-light);">${formatBRL(sumExp)}</strong></td>
+            <td style="color:${balColor}; font-weight:800;">${formatBRL(totalBal)}</td>
+            <td>
+              <span class="table-badge-status ${totalIsPos ? 'azul' : 'vermelho'}">
+                ${totalIsPos ? 'Superávit Anual' : 'Déficit Anual'}
+              </span>
+            </td>
+          </tr>
+        `;
+      }
     }
   }
 
@@ -778,13 +936,12 @@
         const activeContent = document.getElementById(targetTabId);
         if (activeContent) activeContent.classList.add('active');
 
-        // Se abriu a aba de gráficos ou histórico, redimensiona gráficos
         if (targetTabId === 'tab-graficos' || targetTabId === 'tab-historico') {
           setTimeout(() => {
             if (chartIncomeExpense) chartIncomeExpense.resize();
             if (chartCategoryDistribution) chartCategoryDistribution.resize();
             if (chartMonthlyHistory) chartMonthlyHistory.resize();
-          }, 50);
+          }, 60);
         }
       });
     });
@@ -803,14 +960,44 @@
         curr.salary = numVal;
         saveMonthsData();
         renderKPIs();
+        renderAnnualSummary();
         updateCharts();
       }
     });
 
+    // Nome do Usuário
+    document.getElementById('btnOpenEditName').addEventListener('click', () => {
+      const modal = document.getElementById('modalEditName');
+      const input = document.getElementById('userNameInput');
+      input.value = userName === 'Seu Nome' ? '' : userName;
+      modal.classList.add('active');
+      setTimeout(() => input.focus(), 150);
+    });
+
+    document.getElementById('btnSaveUserName').addEventListener('click', () => {
+      const input = document.getElementById('userNameInput');
+      saveUserName(input.value);
+      closeModal('modalEditName');
+      showToast(`Olá, ${userName}!`);
+    });
+
+    // Toggle Detalhes do Acumulado Anual
+    const toggleAnnualBtn = document.getElementById('btnToggleAnnualDetails');
+    const collapsibleAnnual = document.getElementById('annualDetailsCollapsible');
+    if (toggleAnnualBtn && collapsibleAnnual) {
+      toggleAnnualBtn.addEventListener('click', () => {
+        if (collapsibleAnnual.style.display === 'none') {
+          collapsibleAnnual.style.display = 'block';
+          toggleAnnualBtn.textContent = 'Ocultar Detalhes';
+        } else {
+          collapsibleAnnual.style.display = 'none';
+          toggleAnnualBtn.textContent = 'Ver Detalhes';
+        }
+      });
+    }
+
     // Botões de Novo Mês
     document.getElementById('btnNewMonth').addEventListener('click', openNewMonthModal);
-
-    // Botão de Excluir Mês Atual
     document.getElementById('btnDeleteCurrentMonth').addEventListener('click', handleDeleteCurrentMonth);
 
     // Botões de Adicionar Conta
@@ -881,6 +1068,7 @@
         localStorage.removeItem(STORAGE_KEY_MONTHS);
         localStorage.removeItem(STORAGE_KEY_CATEGORIES);
         localStorage.removeItem(STORAGE_KEY_CURRENT_MONTH_ID);
+        localStorage.removeItem(STORAGE_KEY_USER_NAME);
         initApp();
         showToast('Dados restaurados com sucesso.');
       }
@@ -914,8 +1102,9 @@
 
   function exportBackupData() {
     const payload = {
-      version: '1.0',
+      version: '1.1',
       exportedAt: new Date().toISOString(),
+      userName: userName,
       masterCategories: masterCategories,
       monthsData: monthsData
     };
@@ -943,6 +1132,11 @@
           masterCategories = parsed.masterCategories;
           monthsData = parsed.monthsData;
           currentMonthId = monthsData[0]?.id || null;
+          if (parsed.userName) {
+            userName = parsed.userName;
+            localStorage.setItem(STORAGE_KEY_USER_NAME, userName);
+            updateUserNameDisplay();
+          }
 
           saveCategories();
           saveMonthsData();

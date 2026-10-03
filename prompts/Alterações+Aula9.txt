@@ -1,0 +1,12 @@
+Alterações/Inclusões
+
+Mostrar o acumulado do ano.
+
+No gráfico de Pizza mostrar percentuais nativamente.
+
+Inclua a opção de inserir o nome da pessoa
+
+OBS: No uso mobile, ao clicar no campo para inserir gastos a tela se move para o lado e depois não volta ao normal.
+Isso me obriga a todas as vezes ajustar a tela manualmente o que pode levar a perda de dados.
+Poderia ajustar as opções de responsividade?
+Ajuste para modelos Android e iOS
