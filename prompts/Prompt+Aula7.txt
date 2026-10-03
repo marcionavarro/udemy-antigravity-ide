@@ -1,0 +1,33 @@
+Projeto
+
+App Web que funcione em celulares a partir de uma página do meu site.
+
+Objetivo:
+
+Registrar gastos mensais e analisar os resultados.
+
+Detalhes
+O app deve registrar gastos, inicialmente oferecendo as seguintes opções:
+
+Casa
+Cartão
+Compras
+Celular
+Seguros
+Água
+Luz
+
+Além das opções acima o app deve permitir que o usuário insira mais contas mensais, sendo que essas contas mensais devem ser incluídas no mês seguinte (passa a ser padrão para esse usuário).
+
+O app deve permitir que sejam inseridos meses e o usuário poderá inserir o "nome" do mês, por exemplo a pessoa iniciou a análise em Janeiro e depois só voltou a fazer uso do app em março, nesse caso a pessoa poderá nomear seus meses.
+
+O app deve ter um campo para a pessoa inserir seu salário mensal.
+
+Como resultado, a aplicação deve mostrar o valor gasto e o valor recebido, além desses valores seria interessante mostrar um gráfico comparativo.
+
+Atue como um desenvolvedor full stack experiente.
+Utilize como base as cores Preto, Branco e Laranja.
+
+O app deve ser assinado por Tectreinamentos Informática LTDA Desenvolvido com Antigravity.
+
+ 
