@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Estrutura básica de site em preto, laranja e branco.">
+  <title>Meu Site | Preto & Laranja</title>
+  <style>
+    /* Reset & Variáveis de Cores */
+    :root {
+      --bg-dark: #121212;
+      --bg-card: #1E1E1E;
+      --primary-orange: #FF6B00;
+      --orange-hover: #E05D00;
+      --text-white: #FFFFFF;
+      --text-muted: #A0A0A0;
+      --border-color: #2A2A2A;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-white);
+      line-height: 1.6;
+    }
+
+    /* Cabeçalho & Navegação */
+    header {
+      background-color: #0A0A0A;
+      border-bottom: 2px solid var(--primary-orange);
+      padding: 1.2rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    nav {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-white);
+    }
+
+    .logo span {
+      color: var(--primary-orange);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 1.5rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-white);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--primary-orange);
+    }
+
+    /* Seção Hero */
+    .hero {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 5rem 2rem;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+
+    .hero h1 span {
+      color: var(--primary-orange);
+    }
+
+    .hero p {
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      max-width: 600px;
+      margin: 0 auto 2rem;
+    }
+
+    .btn-primary {
+      display: inline-block;
+      background-color: var(--primary-orange);
+      color: var(--text-white);
+      padding: 0.8rem 2rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--orange-hover);
+      transform: translateY(-2px);
+    }
+
+    /* Seção de Recursos/Cards */
+    .features {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 3rem 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+    }
+
+    .card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 2rem;
+      transition: border-color 0.3s ease;
+    }
+
+    .card:hover {
+      border-color: var(--primary-orange);
+    }
+
+    .card-icon {
+      color: var(--primary-orange);
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .card h3 {
+      margin-bottom: 0.5rem;
+    }
+
+    .card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* Rodapé */
+    footer {
+      background-color: #0A0A0A;
+      border-top: 1px solid var(--border-color);
+      text-align: center;
+      padding: 2rem;
+      margin-top: 4rem;
+      color: var(--text-muted);
+    }
+
+    footer span {
+      color: var(--primary-orange);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Cabeçalho -->
+  <header>
+    <nav>
+      <div class="logo">MEU<span>SITE</span></div>
+      <ul class="nav-links">
+        <li><a href="#home">Início</a></li>
+        <li><a href="#recursos">Recursos</a></li>
+        <li><a href="#sobre">Sobre</a></li>
+        <li><a href="#contato">Contato</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- Seção Principal (Hero) -->
+  <main>
+    <section class="hero" id="home">
+      <h1>Design Moderno em <span>Preto & Laranja</span></h1>
+      <p>Estrutura limpa, responsiva e pronta para expansão. Construída com HTML5 e CSS3.</p>
+      <a href="#contato" class="btn-primary">Começar Agora</a>
+    </section>
+
+    <!-- Cards de Conteúdo -->
+    <section class="features" id="recursos">
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <h3>Desempenho</h3>
+        <p>Estrutura leve e otimizada para carregamento ultra rápido.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📱</div>
+        <h3>Responsivo</h3>
+        <p>Adaptado perfeitamente para desktops, tablets e smartphones.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🎨</div>
+        <h3>Estilo Marcante</h3>
+        <p>Contraste alto utilizando tons de preto, branco e destaques em laranja.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Rodapé -->
+  <footer>
+    <p>&copy; 2026 MEU<span>SITE</span>. Todos os direitos reservados.</p>
+  </footer>
+
+</body>
+</html>
