@@ -1,0 +1,5 @@
+# Created at 2026-10-04T12:06:48.132
+Boot Manifest-JAR contains absolute paths in classpath 'F:\udemy-antigravity-ide\ws-java\target\test-classes'
+Hint: <argLine>-Djdk.net.URLClassPath.disableClassPathURLCheck=true</argLine>
+'other' has different root
+

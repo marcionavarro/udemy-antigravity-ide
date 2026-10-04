@@ -1,0 +1,190 @@
+Atue como um Engenheiro de Software Sênior e professor de Java.
+
+Abaixo, vou enviar um código legado feito em Java.
+
+Sua função é tornar o programa mais moderno e intuitivo em seu uso com uma nova interface gráfica alinhada aos atuais padrões e com foco na experiência do usuário.
+
+Remova a opção de inserir o valor de desconto, calcule esse valor automaticamente com base no salário disponibilizado, no lugar desse campo coloque uma opção onde o numero de faltas poderá ser inserido e com base nisso calcule os devidos descontos conforme a CLT.
+
+Inclua novas funcionalidades, mostrando resultados dos cálculos em tempo real sem a dependência de clique.
+
+O botão de calcular deve ser substituído por outro com a função "limpar" que permite usar novamente a aplicação.
+
+Insira uma nova opção que permita ao usuário inserir seu nome para uma interação mais aproximada.
+
+Crie uma nova funcionalidade (acionada por intermédio de botão) que permita o usuário inserir sua data de admissão e de demissão.
+
+Com esses dados, solicite as demais informações necessárias para calcular o valor rescisório a ser recebido pelo funcionário(a).
+
+Para esses dados e novas funcionalidades busque os dados necessários disponíveis na internet para obter o maior índice possível de acerto.
+
+Remova todos os títulos atuais e insira:
+
+Tectreinamentos Informática LTDA.
+Departamento de RH e Departamento Pessoal.
+
+Para os códigos utilize as melhores práticas preferencialmente no padrão MVC.
+
+Faça análise do código e das funcionalidades, caso julgue necessário me dê sugestões de melhorias.
+
+Código legado:
+
+package calculo_salarios;
+
+import java.awt.Color;
+import java.awt.EventQueue;
+import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.text.DecimalFormat;
+
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
+import javax.swing.border.EmptyBorder;
+
+public class Salarios extends JFrame {
+
+	private static final long serialVersionUID = 1L;
+	private JPanel contentPane;
+	private JTextField txtSalario;
+	private JTextField txtPercentual;
+
+	/**
+	 * Launch the application.
+	 */
+	public static void main(String[] args) {
+		EventQueue.invokeLater(new Runnable() {
+			public void run() {
+				try {
+					Salarios frame = new Salarios();
+					frame.setVisible(true);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
+	}
+
+	/**
+	 * Create the frame.
+	 */
+	public Salarios() {
+		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		setBounds(100, 100, 482, 580);
+		contentPane = new JPanel();
+		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
+
+		setContentPane(contentPane);
+		contentPane.setLayout(null);
+		
+		JLabel lblNewLabel = new JLabel("TECTREINAMENTOS INFORMÁTICA");
+		lblNewLabel.setFont(new Font("Arial", Font.BOLD, 15));
+		lblNewLabel.setBounds(30, 11, 273, 21);
+		contentPane.add(lblNewLabel);
+		
+		JLabel lblNewLabel_1 = new JLabel("Desenvolvimento de Programas - Java, MySQL e Python");
+		lblNewLabel_1.setForeground(new Color(0, 0, 255));
+		lblNewLabel_1.setFont(new Font("Arial", Font.ITALIC, 11));
+		lblNewLabel_1.setBounds(30, 32, 278, 14);
+		contentPane.add(lblNewLabel_1);
+		
+		JLabel lblNewLabel_2 = new JLabel("Salário");
+		lblNewLabel_2.setFont(new Font("Arial", Font.BOLD, 14));
+		lblNewLabel_2.setBounds(30, 84, 102, 14);
+		contentPane.add(lblNewLabel_2);
+		
+		JLabel lblNewLabel_2_1 = new JLabel("Percentual de Desconto");
+		lblNewLabel_2_1.setFont(new Font("Arial", Font.BOLD, 14));
+		lblNewLabel_2_1.setBounds(30, 156, 175, 14);
+		contentPane.add(lblNewLabel_2_1);
+		
+		JLabel lblNewLabel_2_1_1 = new JLabel("RESULTADOS");
+		lblNewLabel_2_1_1.setHorizontalAlignment(SwingConstants.CENTER);
+		lblNewLabel_2_1_1.setFont(new Font("Arial", Font.BOLD, 14));
+		lblNewLabel_2_1_1.setBounds(10, 290, 438, 14);
+		contentPane.add(lblNewLabel_2_1_1);
+		
+		JLabel lblLiquido = new JLabel("");
+		lblLiquido.setForeground(new Color(0, 0, 255));
+		lblLiquido.setFont(new Font("Arial", Font.BOLD, 14));
+		lblLiquido.setBounds(30, 338, 399, 14);
+		contentPane.add(lblLiquido);
+		
+		JLabel lblAnual = new JLabel("");
+		lblAnual.setForeground(Color.BLUE);
+		lblAnual.setFont(new Font("Arial", Font.BOLD, 14));
+		lblAnual.setBounds(30, 379, 399, 14);
+		contentPane.add(lblAnual);
+		
+		JLabel lblDecimo = new JLabel("");
+		lblDecimo.setForeground(Color.BLUE);
+		lblDecimo.setFont(new Font("Arial", Font.BOLD, 14));
+		lblDecimo.setBounds(30, 423, 399, 14);
+		contentPane.add(lblDecimo);
+		
+		JLabel lblFerias = new JLabel("");
+		lblFerias.setForeground(Color.BLUE);
+		lblFerias.setFont(new Font("Arial", Font.BOLD, 14));
+		lblFerias.setBounds(30, 463, 399, 14);
+		contentPane.add(lblFerias);
+		
+		JLabel lblNewLabel_1_1 = new JLabel("Desenvolvido por Tectreinamentos Informática LTDA");
+		lblNewLabel_1_1.setForeground(new Color(0, 0, 0));
+		lblNewLabel_1_1.setFont(new Font("Arial", Font.ITALIC, 11));
+		lblNewLabel_1_1.setBounds(188, 516, 260, 14);
+		contentPane.add(lblNewLabel_1_1);
+		
+		txtSalario = new JTextField();
+		txtSalario.setFont(new Font("Tahoma", Font.PLAIN, 14));
+		txtSalario.setBounds(30, 109, 175, 28);
+		contentPane.add(txtSalario);
+		txtSalario.setColumns(10);
+		
+		txtPercentual = new JTextField();
+		txtPercentual.setFont(new Font("Tahoma", Font.PLAIN, 14));
+		txtPercentual.setColumns(10);
+		txtPercentual.setBounds(30, 184, 54, 28);
+		contentPane.add(txtPercentual);
+		
+		JButton btnCalcular = new JButton("Calcular");
+		btnCalcular.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				
+				double salario = Double.parseDouble(txtSalario.getText());
+				double percentual = Double.parseDouble(txtPercentual.getText());
+				
+				double resultado = salario-(salario/100)*percentual;
+				double anual = resultado*12;
+				double decimo = resultado;
+				double ferias = (salario/3)+resultado;
+				
+				//formatação dos resultados
+				DecimalFormat formato = new DecimalFormat("#0.00");
+				String resultadoFormatado = formato.format(resultado);
+				String anualFormatado = formato.format(anual);
+				String decimoFormatado = formato.format(decimo);
+				String feriasFormatado = formato.format(ferias);				
+								
+				lblLiquido.setText("Valor Mensal: R$ "+resultadoFormatado);
+				lblAnual.setText("Valor Anual: R$ "+anualFormatado);
+				lblDecimo.setText("Valor 13 Salario: R$ "+decimoFormatado);
+				lblFerias.setText("Valor de Férias: R$ "+feriasFormatado);
+				
+			}
+		});
+		btnCalcular.setFont(new Font("Arial Black", Font.PLAIN, 14));
+		btnCalcular.setBounds(134, 233, 200, 28);
+		contentPane.add(btnCalcular);
+	}
+	private static class __Tmp {
+		private static void __tmp() {
+			  javax.swing.JPanel __wbp_panel = new javax.swing.JPanel();
+		}
+	}
+}
+
+
