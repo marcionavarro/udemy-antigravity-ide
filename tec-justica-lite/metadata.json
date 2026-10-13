@@ -1,0 +1,9 @@
+{
+  "name": "Tec Justiça Lite",
+  "description": "Agenda funcional e estratégica para advogados com gestão de tarefas, prazos e consultoria jurídica de IA para casos e defesa.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
+

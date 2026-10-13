@@ -1,0 +1,66 @@
+Contexto dos códigos
+
+Instruções enviadas para o Google AI Studio.
+As pastas e códigos são resultado do seguinte prompt:
+
+
+"App para advogados.
+
+Objetivo
+
+Criar uma agenda funcional para advogados, com alertas e considerações sobre a causa que será defendida.
+
+Descrição
+O app deve fornecer campos para cadastrar tarefas diárias, com a opção de cadastrar o caso a ser defendido/gerenciado pelo advogado.
+
+Com base no caso cadastrado (caso de fato esteja cadastrado) o app deve oferecer dicas/opções de leis aplicáveis e sugerir o enredo para a defesa do caso.
+
+O app deve oferecer um campo de dicas sobre o caso, permitindo ao usuário colocar novas circunstâncias se for necessário (opcional).
+
+Detalhes
+O app deve funcionar perfeitamente em celulares, tendo esse aparelho como principal ponto de acesso para os usuários.
+
+Porém versões para computadores e tablets devem ser consideradas.
+
+Utilize navegação eficiente com designer baseado na melhor ux possível (estilo clean).
+
+Permita ao usuário colocar seu nome e personalize as respostas com esse nome.
+permita ao usuário colocar a sua especialidade ou campo de atuação (como criminalista, cível, tributário e etc.) e leve essa informação em consideração nas respostas/interações posteriores.
+
+Sob hipótese alguma crie informações como modelo de preenchimento, o app deve estar 100% em branco para ser testado pelo usuário, não insira exemplos de forma alguma.
+
+Siga as instruções de Layout segundo as imagens anexadas (faça melhorias se necessário porém com aprovação prévia do usuário).
+
+Dados Empresariais do App
+
+Título do APP:
+Tec Justiça Lite
+Cores Preto, Branco e Dourado (detalhes).
+Crie um logo que represente Justiça (balança por exemplo).
+
+
+Tectreinamentos Informática LTDA
+CNPJ: 40.963.840/0001-74
+Contatos: 55 (11) 98235-7631 - WhatsApp
+Email: wagner.inst@gmail.com
+
+Atue como um especialista em desenvolvimento de aplicações para dispositivos móveis.
+Atue como um especialista em design front-end.
+Atue como um especialista em integrações de IA em apps para a etapa back end do projeto."
+
+Com base no que foi fornecido, precisamos realizar alterações.
+
+1 - Sistema de login para que os dados fiquem seguros contra acesso indevido, visto que é um app prioritariamente mobile.
+
+2 - Persistência dos dados após a instalação e login (modelo sugerido PWA)
+Para garantir que seu aplicativo seja super rápido e funcione até mesmo quando estiver sem internet (offline), utilize  uma tecnologia moderna de armazenamento local.
+
+Ao faze o login, guarde de forma segura e criptografada um 'passe de acesso' diretamente no seu dispositivo.
+Além disso, salve informações geradas no app no banco de dados interno do seu próprio celular ou computador. Isso significa que os dados não precisam ser baixados de nenhum servidor toda vez que o app for aberto, economizando bateria e dados móveis, além de manter as informações privadas.
+
+3 - Os campos onde eu cadastro o cliente e cadastro a causa devem estar preferencialmente na mesma aba, com a opção de inserir dados do caso e consultar possíveis formas de defesa (caso o usuário opte por essa consulta clicando em um botão).
+
+4 - A consulta de formas de defesa não funcionou no protótipo, por ser o diferencial do app é fundamental que essa tarefa seja executada de forma eficiente.
+Como sugestão a pessoa pode usar a conta  google do login para acessar a IA e realizar a pesquisa usando assim suas cotas diárias do modelo gratuito e se caso seja um modelo de assinatura será ainda melhor, ou alternativamente utilize recursos de pesquisa Google para a resposta, o importante é que ela funcione efetivamente.
+
+

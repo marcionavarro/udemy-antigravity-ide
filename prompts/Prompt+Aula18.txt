@@ -1,0 +1,45 @@
+App para advogados.
+
+Objetivo
+
+Criar uma agenda funcional para advogados, com alertas e considerações sobre a causa que será defendida.
+
+Descrição
+O app deve fornecer campos para cadastrar tarefas diárias, com a opção de cadastrar o caso a ser defendido/gerenciado pelo advogado.
+
+Com base no caso cadastrado (caso de fato esteja cadastrado) o app deve oferecer dicas/opções de leis aplicáveis e sugerir o enredo para a defesa do caso.
+
+O app deve oferecer um campo de dicas sobre o caso, permitindo ao usuário colocar novas circunstâncias se for necessário (opcional).
+
+Detalhes
+O app deve funcionar perfeitamente em celulares, tendo esse aparelho como principal ponto de acesso para os usuários.
+
+Porém versões para computadores e tablets devem ser consideradas.
+
+Utilize navegação eficiente com designer baseado na melhor ux possível (estilo clean).
+
+Permita ao usuário colocar seu nome e personalize as respostas com esse nome.
+permita ao usuário colocar a sua especialidade ou campo de atuação (como criminalista, cível, tributário e etc.) e leve essa informação em consideração nas respostas/interações posteriores.
+
+Sob hipótese alguma crie informações como modelo de preenchimento, o app deve estar 100% em branco para ser testado pelo usuário, não insira exemplos de forma alguma.
+
+Siga as instruções de Layout segundo as imagens anexadas (faça melhorias se necessário porém com aprovação prévia do usuário).
+
+Dados Empresariais do App
+
+Título do APP:
+Tec Justiça Lite
+Cores Preto, Branco e Dourado (detalhes).
+Crie um logo que represente Justiça (balança por exemplo).
+
+
+Tectreinamentos Informática LTDA
+CNPJ: 40.963.840/0001-74
+Contatos: 55 (11) 98235-7631 - WhatsApp
+Email: wagner.inst@gmail.com
+
+Atue como um especialista em desenvolvimento de aplicações para dispositivos móveis.
+
+Atue como um especialista em design front-end.
+Atue como um especialista em integrações de IA em apps para a etapa back end do projeto.
+

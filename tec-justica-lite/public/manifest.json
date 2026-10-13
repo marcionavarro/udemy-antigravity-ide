@@ -1,0 +1,26 @@
+{
+  "name": "Tec Justiça Lite",
+  "short_name": "TecJustiça",
+  "description": "Agenda funcional e estratégica para advogados com gestão de tarefas, prazos e consultoria jurídica de IA para casos e defesa.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090b10",
+  "theme_color": "#d4af37",
+  "orientation": "portrait-primary",
+  "categories": ["productivity", "business"],
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
