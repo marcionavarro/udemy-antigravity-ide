@@ -1,18 +1,20 @@
 import React from 'react';
 import { JusticeLogo } from './JusticeLogo';
 import { LawyerProfile } from '../types';
-import { User, Info, Calendar } from 'lucide-react';
+import { User, Info, Calendar, LogOut } from 'lucide-react';
 
 interface HeaderProps {
   profile: LawyerProfile;
   onOpenProfile: () => void;
   onOpenCompanyInfo: () => void;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   profile,
   onOpenProfile,
   onOpenCompanyInfo,
+  onLogout,
 }) => {
   const todayFormatted = new Intl.DateTimeFormat('pt-BR', {
     weekday: 'long',
@@ -71,6 +73,22 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Info className="w-4 h-4" />
           </button>
+
+          {/* Logout Button */}
+          {onLogout && (
+            <button
+              onClick={() => {
+                if (confirm('Deseja sair da sua conta?')) {
+                  onLogout();
+                }
+              }}
+              className="p-2 rounded-xl bg-[#131722] hover:bg-red-950/40 border border-slate-700/80 hover:border-red-500/40 text-slate-400 hover:text-red-300 transition-all"
+              title="Sair da conta"
+              aria-label="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     </header>

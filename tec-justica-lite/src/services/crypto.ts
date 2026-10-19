@@ -61,14 +61,14 @@ export async function hashPassword(
   const keyMaterial = await getKeyMaterial(password);
 
   const derivedBits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt: salt as unknown as BufferSource, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
     keyMaterial,
     256,
   );
 
   return {
     hash: arrayBufferToBase64(derivedBits),
-    salt: arrayBufferToBase64(salt.buffer),
+    salt: arrayBufferToBase64(salt.buffer as ArrayBuffer),
   };
 }
 
@@ -109,13 +109,13 @@ export async function encryptData(
   const iv = generateIV();
   const encoder = new TextEncoder();
   const ciphertext = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
+    { name: 'AES-GCM', iv: iv as unknown as BufferSource },
     key,
     encoder.encode(data),
   );
 
   // Armazena IV + ciphertext juntos, separados por '.'
-  return `${arrayBufferToBase64(iv.buffer)}.${arrayBufferToBase64(ciphertext)}`;
+  return `${arrayBufferToBase64(iv.buffer as ArrayBuffer)}.${arrayBufferToBase64(ciphertext)}`;
 }
 
 export async function decryptData(

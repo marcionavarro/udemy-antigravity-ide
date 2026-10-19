@@ -13,8 +13,10 @@ import {
   AlertCircle,
   HelpCircle,
   BookmarkCheck,
+  FileDown,
 } from 'lucide-react';
 import { LegalCase, LawyerProfile } from '../types';
+import { generateContractPDF } from '../services/contractPdf';
 
 interface DefenseDrawerProps {
   isOpen: boolean;
@@ -115,6 +117,22 @@ ${analysis.strategicAlerts.map((a) => `! ${a}`).join('\n')}
           </div>
 
           <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => {
+                try {
+                  generateContractPDF(caseItem, lawyerProfile);
+                } catch (err) {
+                  console.error(err);
+                  alert('Erro ao gerar contrato em PDF.');
+                }
+              }}
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md border border-emerald-400/40 transition-all"
+              title="Baixar Contrato de Prestação de Serviços em PDF"
+            >
+              <FileDown className="w-3.5 h-3.5 text-white" />
+              <span>Contrato PDF</span>
+            </button>
+
             {analysis && (
               <button
                 onClick={handleCopyText}

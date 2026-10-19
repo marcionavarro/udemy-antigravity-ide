@@ -1,10 +1,12 @@
 import React from 'react';
-import { Scale, Plus, Sparkles, Edit2, Trash2, Calendar, User, FileText } from 'lucide-react';
-import { LegalCase, Task } from '../types';
+import { Scale, Plus, Sparkles, Edit2, Trash2, Calendar, User, FileText, DollarSign, FileDown } from 'lucide-react';
+import { LegalCase, Task, LawyerProfile } from '../types';
+import { generateContractPDF } from '../services/contractPdf';
 
 interface CasesListViewProps {
   cases: LegalCase[];
   tasks: Task[];
+  lawyerProfile: LawyerProfile;
   onOpenNewCaseModal: () => void;
   onEditCase: (caseItem: LegalCase) => void;
   onDeleteCase: (caseId: string) => void;
@@ -14,11 +16,21 @@ interface CasesListViewProps {
 export const CasesListView: React.FC<CasesListViewProps> = ({
   cases,
   tasks,
+  lawyerProfile,
   onOpenNewCaseModal,
   onEditCase,
   onDeleteCase,
   onViewDefense,
 }) => {
+  const handleExportPDF = (caseItem: LegalCase) => {
+    try {
+      generateContractPDF(caseItem, lawyerProfile);
+    } catch (err) {
+      console.error('Erro ao gerar PDF:', err);
+      alert('Erro ao gerar o contrato em PDF. Tente novamente.');
+    }
+  };
+
   return (
     <div className="w-full space-y-4">
       {/* Top Header Row */}
@@ -28,7 +40,7 @@ export const CasesListView: React.FC<CasesListViewProps> = ({
             <span>⚖️</span> Casos & Causas Cadastradas
           </h2>
           <p className="text-xs text-slate-400">
-            Gerencie os processos e consulte o enredo de defesa e leis sugeridas
+            Gerencie os processos, exporte contratos e consulte o enredo de defesa
           </p>
         </div>
 
@@ -66,6 +78,7 @@ export const CasesListView: React.FC<CasesListViewProps> = ({
           {cases.map((caseItem) => {
             const linkedTasksCount = tasks.filter((t) => t.caseId === caseItem.id).length;
             const hasAnalysis = Boolean(caseItem.analysis);
+            const hasBudget = Boolean(caseItem.budgetValue);
 
             return (
               <div
@@ -101,6 +114,13 @@ export const CasesListView: React.FC<CasesListViewProps> = ({
                   {/* Actions */}
                   <div className="flex items-center gap-1 shrink-0">
                     <button
+                      onClick={() => handleExportPDF(caseItem)}
+                      className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 border border-emerald-500/30 transition-colors"
+                      title="Exportar Contrato em PDF"
+                    >
+                      <FileDown className="w-3.5 h-3.5" />
+                    </button>
+                    <button
                       onClick={() => onEditCase(caseItem)}
                       className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
                       title="Editar caso / circunstâncias"
@@ -122,7 +142,27 @@ export const CasesListView: React.FC<CasesListViewProps> = ({
                   {caseItem.factsDescription || 'Sem descrição fática detalhada.'}
                 </p>
 
-                {/* Footer with linked tasks and AI button */}
+                {/* Budget Info (if exists) */}
+                {hasBudget && (
+                  <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                    <DollarSign className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span className="text-[11px] text-emerald-300 font-semibold">
+                      Honorários: R$ {caseItem.budgetValue}
+                    </span>
+                    {caseItem.paymentMethod && (
+                      <span className="text-[10px] text-emerald-400/70">
+                        • {caseItem.paymentMethod}
+                      </span>
+                    )}
+                    {caseItem.paymentInstallments && (
+                      <span className="text-[10px] text-emerald-400/70">
+                        • {caseItem.paymentInstallments}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Footer with linked tasks, PDF and AI button */}
                 <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-3 text-xs text-slate-400">
                     <span className="flex items-center gap-1">
@@ -136,13 +176,26 @@ export const CasesListView: React.FC<CasesListViewProps> = ({
                     )}
                   </div>
 
-                  <button
-                    onClick={() => onViewDefense(caseItem)}
-                    className="px-3 py-1.5 rounded-xl gold-gradient-btn text-black font-semibold text-xs flex items-center gap-1.5 shadow-sm"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>{hasAnalysis ? 'Ver Enredo & Leis IA' : 'Gerar Enredo de Defesa'}</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {/* PDF Export Button */}
+                    <button
+                      onClick={() => handleExportPDF(caseItem)}
+                      className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-950/40 border border-emerald-400/40 transition-all hover:scale-105"
+                      title="Exportar Contrato em PDF com dados do cliente e honorários"
+                    >
+                      <FileDown className="w-4 h-4 text-white" />
+                      <span>Exportar Contrato PDF</span>
+                    </button>
+
+                    {/* AI Defense Button */}
+                    <button
+                      onClick={() => onViewDefense(caseItem)}
+                      className="px-3 py-1.5 rounded-xl gold-gradient-btn text-black font-semibold text-xs flex items-center gap-1.5 shadow-sm"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>{hasAnalysis ? 'Ver Enredo & Leis IA' : 'Gerar Enredo de Defesa'}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             );

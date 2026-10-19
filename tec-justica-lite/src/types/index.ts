@@ -44,6 +44,11 @@ export interface LegalCase {
   factsDescription: string;
   circumstances?: string; // Campo opcional de circunstâncias novas / dicas
   analysis?: LegalAnalysis;
+  // Orçamento / Pagamento
+  budgetValue?: string; // Valor dos honorários ex: "5.000,00"
+  budgetDescription?: string; // Descrição dos serviços cobrados
+  paymentMethod?: string; // Ex: "PIX", "Boleto", "Cartão", "Transferência"
+  paymentInstallments?: string; // Ex: "À vista", "3x", "6x"
   createdAt: string;
   updatedAt: string;
 }
@@ -67,4 +72,5 @@ export interface LawyerProfile {
   name: string;
   specialty: string;
   oab?: string;
+  geminiApiKey?: string;
 }

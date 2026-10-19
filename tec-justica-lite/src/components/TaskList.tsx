@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, X, Calendar, AlertTriangle, ShieldCheck, Sparkles, Scale } from 'lucide-react';
+import { Check, X, Calendar, AlertTriangle, ShieldCheck, Sparkles, Scale, FileDown } from 'lucide-react';
 import { Task, LegalCase } from '../types';
 
 interface TaskListProps {
@@ -12,6 +12,7 @@ interface TaskListProps {
   onDeleteTask: (taskId: string) => void;
   onViewCaseDefense: (caseItem: LegalCase, taskTitle?: string) => void;
   onLinkCaseToTask: (taskId: string, caseId: string) => void;
+  onExportContractPDF?: (caseItem: LegalCase) => void;
 }
 
 export const TaskList: React.FC<TaskListProps> = ({
@@ -23,6 +24,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   onToggleTask,
   onDeleteTask,
   onViewCaseDefense,
+  onExportContractPDF,
 }) => {
   // Filter tasks based on category
   const filteredTasks = selectedCategory === 'Todas'
@@ -186,7 +188,7 @@ export const TaskList: React.FC<TaskListProps> = ({
 
                 {/* Linked Case Footer & Quick AI Defense Advice Trigger */}
                 {linkedCase ? (
-                  <div className="pt-2 mt-1 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                  <div className="pt-2 mt-1 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 min-w-0 text-xs text-amber-300/90 truncate">
                       <Scale className="w-3.5 h-3.5 shrink-0 text-amber-400" />
                       <span className="font-semibold truncate">
@@ -197,13 +199,26 @@ export const TaskList: React.FC<TaskListProps> = ({
                       </span>
                     </div>
 
-                    <button
-                      onClick={() => onViewCaseDefense(linkedCase, task.title)}
-                      className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-[11px] font-semibold flex items-center gap-1.5 transition-colors shrink-0 shadow-sm"
-                    >
-                      <Sparkles className="w-3 h-3 text-amber-400" />
-                      <span>Estratégia & Leis IA</span>
-                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {onExportContractPDF && (
+                        <button
+                          onClick={() => onExportContractPDF(linkedCase)}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/40 text-emerald-300 text-[11px] font-semibold flex items-center gap-1 transition-colors shadow-sm"
+                          title="Exportar Contrato de Prestação de Serviços em PDF"
+                        >
+                          <FileDown className="w-3 h-3 text-emerald-400" />
+                          <span>Contrato PDF</span>
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => onViewCaseDefense(linkedCase, task.title)}
+                        className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-[11px] font-semibold flex items-center gap-1.5 transition-colors shrink-0 shadow-sm"
+                      >
+                        <Sparkles className="w-3 h-3 text-amber-400" />
+                        <span>Estratégia & Leis IA</span>
+                      </button>
+                    </div>
                   </div>
                 ) : null}
               </div>

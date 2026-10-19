@@ -3,65 +3,58 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { LoginScreen } from './components/LoginScreen';
 import { Header } from './components/Header';
 import { StatsProgress } from './components/StatsProgress';
 import { TaskForm } from './components/TaskForm';
 import { TaskList } from './components/TaskList';
 import { CasesListView } from './components/CasesListView';
-import { CaseModal } from './components/CaseModal';
+import { InlineCaseForm } from './components/InlineCaseForm';
 import { DefenseDrawer } from './components/DefenseDrawer';
 import { ProfileModal } from './components/ProfileModal';
 import { CompanyInfoModal } from './components/CompanyInfoModal';
+import { ContractExportModal } from './components/ContractExportModal';
 import { Navigation, AppView } from './components/Navigation';
+import { generateContractPDF } from './services/contractPdf';
 import { requestDefenseAnalysis } from './services/api';
+import {
+  registerUser,
+  loginUser,
+  logoutUser,
+  checkSession,
+  hasRegisteredAccount,
+  getEncryptionKeyFromPassword,
+} from './services/authStore';
+import { initDB, saveEncrypted, loadDecrypted, migrateFromLocalStorage } from './services/db';
 import { Task, LegalCase, LawyerProfile, TaskPriority } from './types';
 import { Sparkles, Scale, CheckCircle2, UserCheck } from 'lucide-react';
 
-const STORAGE_KEYS = {
-  PROFILE: 'tecjustica_profile_v1',
-  TASKS: 'tecjustica_tasks_v1',
-  CASES: 'tecjustica_cases_v1',
-  CATEGORIES: 'tecjustica_categories_v1',
+// ─── Chaves para persistência em IndexedDB ──────────────────────
+const DB_KEYS = {
+  PROFILE: 'profile',
+  TASKS: 'tasks',
+  CASES: 'cases',
+  CATEGORIES: 'categories',
 };
 
 export default function App() {
-  // State 100% BLANK by default as requested: no sample data pre-filled
-  const [profile, setProfile] = useState<LawyerProfile>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.PROFILE);
-      return saved ? JSON.parse(saved) : { name: '', specialty: '', oab: '' };
-    } catch {
-      return { name: '', specialty: '', oab: '' };
-    }
-  });
+  // ─── Estado de Autenticação ─────────────────────────────────────
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [hasExistingAccount, setHasExistingAccount] = useState(false);
+  const [loginProcessing, setLoginProcessing] = useState(false);
 
-  const [tasks, setTasks] = useState<Task[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.TASKS);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  // Chave de criptografia mantida em memória após login
+  const cryptoKeyRef = useRef<CryptoKey | null>(null);
 
-  const [cases, setCases] = useState<LegalCase[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.CASES);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const [categories, setCategories] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
-      return saved ? JSON.parse(saved) : ['Geral'];
-    } catch {
-      return ['Geral'];
-    }
-  });
+  // ─── Estado do App (100% BLANK por padrão) ─────────────────────
+  const [profile, setProfile] = useState<LawyerProfile>({ name: '', specialty: '', oab: '' });
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [cases, setCases] = useState<LegalCase[]>([]);
+  const [categories, setCategories] = useState<string[]>(['Geral']);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   const [currentView, setCurrentView] = useState<AppView>('tarefas');
   const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
@@ -69,8 +62,9 @@ export default function App() {
   // Modals
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
-  const [isCaseModalOpen, setIsCaseModalOpen] = useState(false);
   const [caseToEdit, setCaseToEdit] = useState<LegalCase | null>(null);
+  const [casePromptPdf, setCasePromptPdf] = useState<LegalCase | null>(null);
+  const [isCaseFormOpen, setIsCaseFormOpen] = useState(false);
 
   // Defense Drawer & AI State
   const [isDefenseDrawerOpen, setIsDefenseDrawerOpen] = useState(false);
@@ -78,24 +72,129 @@ export default function App() {
   const [activeTaskTitleForDefense, setActiveTaskTitleForDefense] = useState<string | undefined>(undefined);
   const [isAiLoading, setIsAiLoading] = useState(false);
 
-  // Save to localStorage
+  // ─── Verificação Inicial de Sessão ─────────────────────────────
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
-  }, [profile]);
+    async function checkAuth() {
+      try {
+        await initDB();
+        const accountExists = await hasRegisteredAccount();
+        setHasExistingAccount(accountExists);
+
+        const session = checkSession();
+        if (session.valid) {
+          // Sessão válida — mas precisamos da senha para derivar a chave.
+          // Se temos uma sessão válida mas sem chave, mostrar tela de login
+          // para obter a senha novamente (sem necessidade de recriar conta).
+          setIsAuthenticated(false);
+        } else {
+          setIsAuthenticated(false);
+        }
+      } catch (err) {
+        console.error('Erro na verificação de autenticação:', err);
+      } finally {
+        setAuthLoading(false);
+      }
+    }
+    checkAuth();
+  }, []);
+
+  // ─── Carregar dados criptografados após autenticação ───────────
+  const loadEncryptedData = useCallback(async (key: CryptoKey) => {
+    try {
+      // Migrar dados legados do localStorage se existirem
+      await migrateFromLocalStorage(key);
+
+      const [savedProfile, savedTasks, savedCases, savedCategories] = await Promise.all([
+        loadDecrypted<LawyerProfile>(DB_KEYS.PROFILE, key),
+        loadDecrypted<Task[]>(DB_KEYS.TASKS, key),
+        loadDecrypted<LegalCase[]>(DB_KEYS.CASES, key),
+        loadDecrypted<string[]>(DB_KEYS.CATEGORIES, key),
+      ]);
+
+      if (savedProfile) setProfile(savedProfile);
+      if (savedTasks) setTasks(savedTasks);
+      if (savedCases) setCases(savedCases);
+      if (savedCategories) setCategories(savedCategories);
+
+      setDataLoaded(true);
+    } catch (err) {
+      console.error('Erro ao carregar dados criptografados:', err);
+      setDataLoaded(true);
+    }
+  }, []);
+
+  // ─── Persistir dados automaticamente quando mudam ──────────────
+  useEffect(() => {
+    if (!dataLoaded || !cryptoKeyRef.current) return;
+    saveEncrypted(DB_KEYS.PROFILE, profile, cryptoKeyRef.current).catch(console.error);
+  }, [profile, dataLoaded]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
-  }, [tasks]);
+    if (!dataLoaded || !cryptoKeyRef.current) return;
+    saveEncrypted(DB_KEYS.TASKS, tasks, cryptoKeyRef.current).catch(console.error);
+  }, [tasks, dataLoaded]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CASES, JSON.stringify(cases));
-  }, [cases]);
+    if (!dataLoaded || !cryptoKeyRef.current) return;
+    saveEncrypted(DB_KEYS.CASES, cases, cryptoKeyRef.current).catch(console.error);
+  }, [cases, dataLoaded]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
-  }, [categories]);
+    if (!dataLoaded || !cryptoKeyRef.current) return;
+    saveEncrypted(DB_KEYS.CATEGORIES, categories, cryptoKeyRef.current).catch(console.error);
+  }, [categories, dataLoaded]);
 
-  // Task Operations
+  // ─── Handlers de Autenticação ──────────────────────────────────
+  const handleLogin = async (email: string, password: string) => {
+    setLoginProcessing(true);
+    setAuthError(null);
+    try {
+      await loginUser(email, password);
+      const key = await getEncryptionKeyFromPassword(password);
+      cryptoKeyRef.current = key;
+      await loadEncryptedData(key);
+      setIsAuthenticated(true);
+    } catch (err: any) {
+      setAuthError(err.message || 'Erro ao fazer login.');
+    } finally {
+      setLoginProcessing(false);
+    }
+  };
+
+  const handleRegister = async (email: string, password: string) => {
+    setLoginProcessing(true);
+    setAuthError(null);
+    try {
+      await registerUser(email, password);
+      const key = await getEncryptionKeyFromPassword(password);
+      cryptoKeyRef.current = key;
+      await loadEncryptedData(key);
+      setIsAuthenticated(true);
+      setHasExistingAccount(true);
+    } catch (err: any) {
+      setAuthError(err.message || 'Erro ao criar conta.');
+    } finally {
+      setLoginProcessing(false);
+    }
+  };
+
+  const handleLogout = () => {
+    logoutUser();
+    cryptoKeyRef.current = null;
+    setIsAuthenticated(false);
+    setDataLoaded(false);
+    // Reset state
+    setProfile({ name: '', specialty: '', oab: '' });
+    setTasks([]);
+    setCases([]);
+    setCategories(['Geral']);
+    setCurrentView('tarefas');
+    setIsProfileModalOpen(false);
+    setIsCompanyModalOpen(false);
+    setIsDefenseDrawerOpen(false);
+  };
+
+  // ─── Task Operations ──────────────────────────────────────────
   const handleAddTask = (data: {
     title: string;
     category: string;
@@ -146,10 +245,10 @@ export default function App() {
     }
   };
 
-  // Case Operations
+  // ─── Case Operations ──────────────────────────────────────────
   const handleSaveCase = async (
     caseData: Omit<LegalCase, 'id' | 'createdAt' | 'updatedAt' | 'analysis'>,
-    andAnalyze?: boolean
+    options?: { andAnalyze?: boolean; andExportPdf?: boolean }
   ) => {
     let savedCase: LegalCase;
 
@@ -173,7 +272,19 @@ export default function App() {
       setCases((prev) => [savedCase, ...prev]);
     }
 
-    if (andAnalyze) {
+    if (options?.andExportPdf) {
+      try {
+        generateContractPDF(savedCase, profile);
+      } catch (err) {
+        console.error('Erro ao gerar PDF do contrato:', err);
+        alert('Erro ao gerar o contrato em PDF.');
+      }
+    } else if (!options?.andAnalyze) {
+      // Abre modal oferecendo o download imediato do PDF
+      setCasePromptPdf(savedCase);
+    }
+
+    if (options?.andAnalyze) {
       handleOpenDefense(savedCase);
     }
   };
@@ -189,10 +300,9 @@ export default function App() {
 
   const handleEditCase = (caseItem: LegalCase) => {
     setCaseToEdit(caseItem);
-    setIsCaseModalOpen(true);
   };
 
-  // AI Defense Trigger
+  // ─── AI Defense Trigger ────────────────────────────────────────
   const handleOpenDefense = async (caseItem: LegalCase, taskTitle?: string) => {
     setActiveCaseForDefense(caseItem);
     setActiveTaskTitleForDefense(taskTitle);
@@ -262,6 +372,32 @@ export default function App() {
 
   const pendingTasksCount = tasks.filter((t) => !t.completed).length;
 
+  // ─── Tela de carregamento inicial ──────────────────────────────
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#090b10] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 rounded-full border-4 border-amber-500/20 border-t-amber-400 animate-spin" />
+          <p className="text-xs text-amber-300/70 font-medium">Carregando Tec Justiça Lite...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Tela de Login / Registro ──────────────────────────────────
+  if (!isAuthenticated) {
+    return (
+      <LoginScreen
+        onAuthenticated={handleLogin}
+        onRegister={handleRegister}
+        isLoading={loginProcessing}
+        error={authError}
+        hasAccount={hasExistingAccount}
+      />
+    );
+  }
+
+  // ─── App Principal (após autenticação) ─────────────────────────
   return (
     <div className="min-h-screen bg-[#090b10] text-slate-100 flex flex-col pb-24 select-none">
       {/* Top Header */}
@@ -269,6 +405,7 @@ export default function App() {
         profile={profile}
         onOpenProfile={() => setIsProfileModalOpen(true)}
         onOpenCompanyInfo={() => setIsCompanyModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* Main Container */}
@@ -298,7 +435,32 @@ export default function App() {
           </div>
         )}
 
-        {/* View Switcher Tabs (For Desktop / Quick Access) */}
+        {/* API Key Alert Banner */}
+        {profile.name && !profile.geminiApiKey && (
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-500/10 via-[#131724] to-[#121624] border border-blue-500/30 flex items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-white">
+                  Configure a IA de Defesa
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  Insira sua chave do Gemini API no Perfil para ativar a consultoria jurídica inteligente.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsProfileModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-200 font-semibold text-xs shrink-0 transition-colors"
+            >
+              Configurar
+            </button>
+          </div>
+        )}
+
+        {/* View Switcher Tabs */}
         <div className="grid grid-cols-2 p-1 bg-[#121624] border border-slate-800 rounded-2xl">
           <button
             onClick={() => setCurrentView('tarefas')}
@@ -322,7 +484,7 @@ export default function App() {
           </button>
         </div>
 
-        {/* View: Tarefas (Matching layout of reference image) */}
+        {/* View: Tarefas */}
         {currentView === 'tarefas' && (
           <div className="space-y-4 animate-in fade-in duration-200">
             {/* Top Progress & Categories Breakdown */}
@@ -340,7 +502,8 @@ export default function App() {
               onAddCategory={handleAddCategory}
               onOpenNewCaseModal={() => {
                 setCaseToEdit(null);
-                setIsCaseModalOpen(true);
+                setIsCaseFormOpen(true);
+                setCurrentView('casos');
               }}
             />
 
@@ -361,19 +524,44 @@ export default function App() {
                   prev.map((t) => (t.id === taskId ? { ...t, caseId } : t))
                 );
               }}
+              onExportContractPDF={(caseItem) => {
+                try {
+                  generateContractPDF(caseItem, profile);
+                } catch (err) {
+                  console.error('Erro ao gerar contrato em PDF:', err);
+                  alert('Erro ao gerar o contrato em PDF.');
+                }
+              }}
             />
           </div>
         )}
 
-        {/* View: Casos & Defesa */}
+        {/* View: Casos & Defesa (com formulário inline) */}
         {currentView === 'casos' && (
           <div className="space-y-4 animate-in fade-in duration-200">
+            {/* Formulário inline para cadastro/edição de caso */}
+            <InlineCaseForm
+              lawyerProfile={profile}
+              caseToEdit={caseToEdit}
+              isExpanded={isCaseFormOpen || cases.length === 0}
+              onToggleExpand={setIsCaseFormOpen}
+              onSaveCase={handleSaveCase}
+              onCancelEdit={() => {
+                setCaseToEdit(null);
+                setIsCaseFormOpen(false);
+              }}
+            />
+
+            {/* Lista de casos existentes */}
             <CasesListView
               cases={cases}
               tasks={tasks}
+              lawyerProfile={profile}
               onOpenNewCaseModal={() => {
                 setCaseToEdit(null);
-                setIsCaseModalOpen(true);
+                setIsCaseFormOpen(true);
+                // Scroll to top to expand the InlineCaseForm
+                window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               onEditCase={handleEditCase}
               onDeleteCase={handleDeleteCase}
@@ -399,22 +587,12 @@ export default function App() {
         onClose={() => setIsProfileModalOpen(false)}
         profile={profile}
         onSave={(updated) => setProfile(updated)}
+        onLogout={handleLogout}
       />
 
       <CompanyInfoModal
         isOpen={isCompanyModalOpen}
         onClose={() => setIsCompanyModalOpen(false)}
-      />
-
-      <CaseModal
-        isOpen={isCaseModalOpen}
-        onClose={() => {
-          setIsCaseModalOpen(false);
-          setCaseToEdit(null);
-        }}
-        caseToEdit={caseToEdit}
-        lawyerProfile={profile}
-        onSaveCase={handleSaveCase}
       />
 
       <DefenseDrawer
@@ -429,6 +607,14 @@ export default function App() {
         lawyerProfile={profile}
         isLoading={isAiLoading}
         onRefreshAnalysis={handleRefreshDefense}
+      />
+
+      <ContractExportModal
+        isOpen={!!casePromptPdf}
+        onClose={() => setCasePromptPdf(null)}
+        caseItem={casePromptPdf}
+        lawyerProfile={profile}
+        onOpenDefense={(c) => handleOpenDefense(c)}
       />
     </div>
   );
