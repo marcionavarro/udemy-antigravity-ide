@@ -17,7 +17,7 @@ import { CompanyInfoModal } from './components/CompanyInfoModal';
 import { ContractExportModal } from './components/ContractExportModal';
 import { Navigation, AppView } from './components/Navigation';
 import { generateContractPDF } from './services/contractPdf';
-import { requestDefenseAnalysis } from './services/api';
+import { requestDefenseAnalysis, checkAiAvailability } from './services/api';
 import {
   registerUser,
   loginUser,
@@ -71,8 +71,15 @@ export default function App() {
   const [activeCaseForDefense, setActiveCaseForDefense] = useState<LegalCase | null>(null);
   const [activeTaskTitleForDefense, setActiveTaskTitleForDefense] = useState<string | undefined>(undefined);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isAiActive, setIsAiActive] = useState<boolean>(false);
 
-  // ─── Verificação Inicial de Sessão ─────────────────────────────
+  // ─── Verificação Inicial de IA e Sessão ────────────────────────
+  useEffect(() => {
+    checkAiAvailability().then((available) => {
+      setIsAiActive(available);
+    });
+  }, []);
+
   useEffect(() => {
     async function checkAuth() {
       try {
@@ -403,6 +410,7 @@ export default function App() {
       {/* Top Header */}
       <Header
         profile={profile}
+        isAiActive={isAiActive}
         onOpenProfile={() => setIsProfileModalOpen(true)}
         onOpenCompanyInfo={() => setIsCompanyModalOpen(true)}
         onLogout={handleLogout}
@@ -431,31 +439,6 @@ export default function App() {
               className="px-3 py-1.5 rounded-xl gold-gradient-btn text-black font-semibold text-xs shrink-0 shadow-md"
             >
               Definir Perfil
-            </button>
-          </div>
-        )}
-
-        {/* API Key Alert Banner */}
-        {profile.name && !profile.geminiApiKey && (
-          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-500/10 via-[#131724] to-[#121624] border border-blue-500/30 flex items-center justify-between gap-3 shadow-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-white">
-                  Configure a IA de Defesa
-                </p>
-                <p className="text-[11px] text-slate-400">
-                  Insira sua chave do Gemini API no Perfil para ativar a consultoria jurídica inteligente.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setIsProfileModalOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-200 font-semibold text-xs shrink-0 transition-colors"
-            >
-              Configurar
             </button>
           </div>
         )}
@@ -557,6 +540,7 @@ export default function App() {
               cases={cases}
               tasks={tasks}
               lawyerProfile={profile}
+              isAiActive={isAiActive}
               onOpenNewCaseModal={() => {
                 setCaseToEdit(null);
                 setIsCaseFormOpen(true);
@@ -606,6 +590,7 @@ export default function App() {
         taskTitle={activeTaskTitleForDefense}
         lawyerProfile={profile}
         isLoading={isAiLoading}
+        isAiActive={isAiActive}
         onRefreshAnalysis={handleRefreshDefense}
       />
 

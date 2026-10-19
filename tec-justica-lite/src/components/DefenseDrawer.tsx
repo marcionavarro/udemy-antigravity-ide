@@ -25,6 +25,7 @@ interface DefenseDrawerProps {
   taskTitle?: string;
   lawyerProfile: LawyerProfile;
   isLoading: boolean;
+  isAiActive?: boolean;
   onRefreshAnalysis: (updatedCircumstances?: string) => void;
 }
 
@@ -35,6 +36,7 @@ export const DefenseDrawer: React.FC<DefenseDrawerProps> = ({
   taskTitle,
   lawyerProfile,
   isLoading,
+  isAiActive = false,
   onRefreshAnalysis,
 }) => {
   const [copied, setCopied] = useState(false);
@@ -145,9 +147,9 @@ ${analysis.strategicAlerts.map((a) => `! ${a}`).join('\n')}
 
             <button
               onClick={() => onRefreshAnalysis()}
-              disabled={isLoading}
-              className="p-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 transition-colors disabled:opacity-50"
-              title="Recalcular análise"
+              disabled={isLoading || !isAiActive}
+              className="p-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              title={isAiActive ? 'Recalcular análise' : 'Requer GEMINI_API_KEY no arquivo .env'}
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
@@ -192,19 +194,32 @@ ${analysis.strategicAlerts.map((a) => `! ${a}`).join('\n')}
           ) : !analysis ? (
             <div className="py-16 text-center space-y-3 bg-[#121624] border border-slate-800 rounded-2xl p-6">
               <Scale className="w-12 h-12 mx-auto text-amber-400/60" />
-              <p className="font-semibold text-white text-base">
-                Nenhuma análise gerada para esta causa ainda.
-              </p>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                Clique no botão abaixo para processar os fatos e obter o enredo de defesa e leis sugeridas.
-              </p>
-              <button
-                onClick={() => onRefreshAnalysis()}
-                className="mt-3 px-5 py-2.5 rounded-xl gold-gradient-btn text-black font-semibold text-xs inline-flex items-center gap-2 shadow-lg"
-              >
-                <Sparkles className="w-4 h-4" />
-                Gerar Análise Jurídica Agora
-              </button>
+              {isAiActive ? (
+                <>
+                  <p className="font-semibold text-white text-base">
+                    Nenhuma análise gerada para esta causa ainda.
+                  </p>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                    Clique no botão abaixo para processar os fatos e obter o enredo de defesa e leis sugeridas.
+                  </p>
+                  <button
+                    onClick={() => onRefreshAnalysis()}
+                    className="mt-3 px-5 py-2.5 rounded-xl gold-gradient-btn text-black font-semibold text-xs inline-flex items-center gap-2 shadow-lg"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Gerar Análise Jurídica Agora
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="font-semibold text-white text-base">
+                    Modo IA Desativado
+                  </p>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+                    Para ativar a consultoria jurídica e a elaboração de teses com IA, configure a variável <code className="text-amber-300 bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-500/30 font-mono text-[11px]">GEMINI_API_KEY</code> no arquivo <code className="text-amber-300 bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-500/30 font-mono text-[11px]">.env</code>.
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             <>

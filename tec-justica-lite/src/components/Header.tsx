@@ -1,10 +1,11 @@
 import React from 'react';
 import { JusticeLogo } from './JusticeLogo';
 import { LawyerProfile } from '../types';
-import { User, Info, Calendar, LogOut } from 'lucide-react';
+import { User, Info, Calendar, LogOut, Sparkles } from 'lucide-react';
 
 interface HeaderProps {
   profile: LawyerProfile;
+  isAiActive?: boolean;
   onOpenProfile: () => void;
   onOpenCompanyInfo: () => void;
   onLogout?: () => void;
@@ -12,6 +13,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   profile,
+  isAiActive,
   onOpenProfile,
   onOpenCompanyInfo,
   onLogout,
@@ -36,10 +38,18 @@ export const Header: React.FC<HeaderProps> = ({
                 Tec Justiça <span className="gold-gradient-text font-semibold text-sm md:text-base">Lite</span>
               </h1>
             </div>
-            <p className="text-[10px] text-amber-300/70 tracking-wider uppercase font-medium flex items-center gap-1">
-              <Calendar className="w-3 h-3 inline text-amber-400" />
-              <span className="capitalize">{todayFormatted}</span>
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-[10px] text-amber-300/70 tracking-wider uppercase font-medium flex items-center gap-1">
+                <Calendar className="w-3 h-3 inline text-amber-400" />
+                <span className="capitalize">{todayFormatted}</span>
+              </p>
+              {isAiActive && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[9px] font-semibold tracking-wide">
+                  <Sparkles className="w-2.5 h-2.5 text-emerald-400" />
+                  IA (.env)
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

@@ -14,19 +14,33 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(express.json());
 
-// Initialize Gemini Client
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    },
-  },
+// Endpoint: Check if AI mode is enabled via .env
+app.get('/api/ai/status', (_req, res) => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  const isEnabled = Boolean(apiKey && apiKey !== 'MY_GEMINI_API_KEY' && apiKey.trim() !== '');
+  res.json({ enabled: isEnabled });
 });
 
 // Endpoint: AI Legal Strategy & Applicable Laws
 app.post('/api/ai/analyze-defense', async (req, res) => {
   try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey.trim() === '') {
+      return res.status(503).json({
+        success: false,
+        error: 'Modo IA desativado. Para ativar a consultoria jurídica com IA, configure a variável GEMINI_API_KEY no arquivo .env.',
+      });
+    }
+
+    const ai = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
+
     const {
       lawyerName = '',
       specialty = '',

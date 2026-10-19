@@ -7,6 +7,7 @@ interface CasesListViewProps {
   cases: LegalCase[];
   tasks: Task[];
   lawyerProfile: LawyerProfile;
+  isAiActive?: boolean;
   onOpenNewCaseModal: () => void;
   onEditCase: (caseItem: LegalCase) => void;
   onDeleteCase: (caseId: string) => void;
@@ -17,6 +18,7 @@ export const CasesListView: React.FC<CasesListViewProps> = ({
   cases,
   tasks,
   lawyerProfile,
+  isAiActive = false,
   onOpenNewCaseModal,
   onEditCase,
   onDeleteCase,
@@ -190,10 +192,20 @@ export const CasesListView: React.FC<CasesListViewProps> = ({
                     {/* AI Defense Button */}
                     <button
                       onClick={() => onViewDefense(caseItem)}
-                      className="px-3 py-1.5 rounded-xl gold-gradient-btn text-black font-semibold text-xs flex items-center gap-1.5 shadow-sm"
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all ${
+                        hasAnalysis || isAiActive
+                          ? 'gold-gradient-btn text-black'
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                      }`}
                     >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>{hasAnalysis ? 'Ver Enredo & Leis IA' : 'Gerar Enredo de Defesa'}</span>
+                      <Sparkles className={`w-3.5 h-3.5 ${hasAnalysis || isAiActive ? '' : 'text-slate-400'}`} />
+                      <span>
+                        {hasAnalysis
+                          ? 'Ver Enredo & Leis IA'
+                          : isAiActive
+                          ? 'Gerar Enredo de Defesa'
+                          : 'Consultoria IA (.env)'}
+                      </span>
                     </button>
                   </div>
                 </div>

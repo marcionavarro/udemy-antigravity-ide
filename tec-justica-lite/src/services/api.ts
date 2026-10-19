@@ -1,13 +1,36 @@
 import { LegalAnalysis, LegalCase, LawyerProfile } from '../types';
-import { requestDefenseAnalysisClientSide } from './geminiClient';
+import {
+  requestDefenseAnalysisClientSide,
+  getEnvGeminiApiKey,
+  isClientAiAvailable,
+} from './geminiClient';
+
+/**
+ * Verifica se o modo IA está ativado (via .env no frontend ou no backend).
+ */
+export async function checkAiAvailability(): Promise<boolean> {
+  // 1. Verifica se a chave foi injetada pelo .env no cliente
+  if (isClientAiAvailable()) {
+    return true;
+  }
+
+  // 2. Verifica se o backend possui a chave configurada no .env
+  try {
+    const res = await fetch('/api/ai/status');
+    if (res.ok) {
+      const data = await res.json();
+      return Boolean(data.enabled);
+    }
+  } catch {
+    // Backend offline ou indisponível
+  }
+
+  return false;
+}
 
 /**
  * Solicita análise de defesa jurídica via IA.
- *
- * Estratégia:
- * 1. Se o perfil do advogado possui geminiApiKey → chama direto pelo browser (client-side)
- * 2. Caso contrário → tenta o endpoint do servidor (/api/ai/analyze-defense)
- * 3. Se ambos falharem → retorna erro explicativo
+ * Utiliza a chave do Gemini configurada exclusivamente no .env.
  */
 export async function requestDefenseAnalysis(params: {
   lawyer: LawyerProfile;
@@ -15,25 +38,27 @@ export async function requestDefenseAnalysis(params: {
   taskTitle?: string;
 }): Promise<LegalAnalysis> {
   const { lawyer, caseItem, taskTitle } = params;
+  const clientKey = getEnvGeminiApiKey();
 
-  // 1. Tentar chamada direta ao Gemini pelo browser
-  if (lawyer.geminiApiKey) {
+  // 1. Tentar chamada direta ao Gemini se a chave estiver disponível no frontend via .env
+  if (clientKey) {
     try {
-      return await requestDefenseAnalysisClientSide(params);
+      return await requestDefenseAnalysisClientSide({
+        ...params,
+        apiKey: clientKey,
+      });
     } catch (clientError: any) {
       console.warn('[API] Falha na chamada client-side ao Gemini:', clientError.message);
-      // Se o erro é de API key inválida, propagar o erro sem tentar server
       if (
         clientError.message.includes('inválida') ||
-        clientError.message.includes('não configurada')
+        clientError.message.includes('desativado')
       ) {
         throw clientError;
       }
-      // Tentar server como fallback
     }
   }
 
-  // 2. Tentar via servidor backend
+  // 2. Tentar via servidor backend (/api/ai/analyze-defense)
   try {
     const res = await fetch('/api/ai/analyze-defense', {
       method: 'POST',
@@ -56,7 +81,7 @@ export async function requestDefenseAnalysis(params: {
 
     const data = await res.json();
     if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Falha ao gerar análise jurídica.');
+      throw new Error(data.error || 'Falha ao processar análise jurídica.');
     }
 
     return {
@@ -65,15 +90,10 @@ export async function requestDefenseAnalysis(params: {
     };
   } catch (serverError: any) {
     console.warn('[API] Falha na chamada ao servidor:', serverError.message);
-
-    // Se não tem API key configurada e o server também falhou
-    if (!lawyer.geminiApiKey) {
-      throw new Error(
-        'Para usar a consultoria jurídica com IA, configure sua Chave da API Gemini no Perfil do Advogado. ' +
-        'Obtenha gratuitamente em: https://aistudio.google.com/apikey'
-      );
-    }
-
-    throw serverError;
+    throw new Error(
+      serverError.message ||
+        'Modo IA desativado. Para ativar a consultoria jurídica inteligente, configure a variável GEMINI_API_KEY no arquivo .env.'
+    );
   }
 }
+

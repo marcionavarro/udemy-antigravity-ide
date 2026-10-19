@@ -79,18 +79,36 @@ Por favor, gere a análise de defesa e leis aplicáveis no formato JSON estrutur
 }
 
 /**
- * Chama a Gemini API diretamente pelo browser usando a API key do usuário.
+ * Obtém a chave Gemini injetada a partir do arquivo .env
+ */
+export function getEnvGeminiApiKey(): string {
+  const key = (import.meta.env.VITE_GEMINI_API_KEY || '').trim();
+  if (!key || key === 'MY_GEMINI_API_KEY') return '';
+  return key;
+}
+
+/**
+ * Retorna se o cliente possui uma chave Gemini válida do .env
+ */
+export function isClientAiAvailable(): boolean {
+  return Boolean(getEnvGeminiApiKey());
+}
+
+/**
+ * Chama a Gemini API diretamente pelo browser usando a API key configurada no .env.
  */
 export async function requestDefenseAnalysisClientSide(params: {
   lawyer: LawyerProfile;
   caseItem: LegalCase;
   taskTitle?: string;
+  apiKey?: string;
 }): Promise<LegalAnalysis> {
   const { lawyer, caseItem, taskTitle } = params;
+  const apiKey = params.apiKey || getEnvGeminiApiKey();
 
-  if (!lawyer.geminiApiKey) {
+  if (!apiKey) {
     throw new Error(
-      'Chave da API Gemini não configurada. Acesse seu Perfil e insira sua API Key do Google AI Studio para habilitar a consultoria jurídica com IA.'
+      'Modo IA desativado: nenhuma chave configurada no .env. Defina a variável GEMINI_API_KEY no arquivo .env para ativar a consultoria jurídica.'
     );
   }
 
@@ -122,7 +140,7 @@ export async function requestDefenseAnalysisClientSide(params: {
     },
   };
 
-  const url = `${GEMINI_API_URL}?key=${lawyer.geminiApiKey}`;
+  const url = `${GEMINI_API_URL}?key=${apiKey}`;
 
   const response = await fetch(url, {
     method: 'POST',
@@ -137,13 +155,13 @@ export async function requestDefenseAnalysisClientSide(params: {
     const errorMsg = errorData?.error?.message || `Erro HTTP ${response.status}`;
 
     if (response.status === 400 && errorMsg.includes('API key')) {
-      throw new Error('Chave da API Gemini inválida. Verifique a chave no seu Perfil.');
+      throw new Error('Chave da API Gemini configurada no .env inválida. Verifique o valor de GEMINI_API_KEY.');
     }
     if (response.status === 429) {
       throw new Error('Limite de requisições da API Gemini atingido. Aguarde alguns minutos e tente novamente.');
     }
     if (response.status === 403) {
-      throw new Error('Acesso negado pela API Gemini. Verifique se sua API Key está ativa e com permissões corretas em https://aistudio.google.com/apikey');
+      throw new Error('Acesso negado pela API Gemini. Verifique se sua chave no .env está ativa em https://aistudio.google.com/apikey');
     }
 
     throw new Error(`Erro ao consultar Gemini: ${errorMsg}`);
